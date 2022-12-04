@@ -37,7 +37,7 @@ class Strava:  # pylint: disable=too-few-public-methods
         password (str): Password
     """
     _BASE_DIR = Path(__file__).resolve().parent
-    _CLUB_URL = "https://www.strava.com/clubs/"
+    _BASE_URL = "https://www.strava.com/"
     __chromedriver = ChromeDriverManager().install()
 
     def __init__(self, club_id: int, email: str, password: str):
@@ -45,15 +45,14 @@ class Strava:  # pylint: disable=too-few-public-methods
         self.email = email
         self.club_id = club_id
         self.logging = logging.getLogger(__name__)
+        self.service=Service(self.__chromedriver)  # Service
         self.options = Options()  # Options webdriver
         # self.options.add_argument("--headless")  # running in the background
         self.options.add_argument("--no-sandbox")  # Disable sandbox
         self.options.add_argument(
             "--disable-blink-features=AutomationControlled")  # To not detected
         self.options.add_argument(f"userAgent={UserAgent().random}")
-        self.browser = Chrome(
-            service=Service(self.__chromedriver),
-            options=self.options)  # Create a driver object
+        self.browser = Chrome(service=self.service), options=self.options)
 
     @property
     def _authorization(self) -> bool:
@@ -61,7 +60,7 @@ class Strava:  # pylint: disable=too-few-public-methods
         :return: True if authorization is successful
         """
         try:
-            self.browser.get("https://www.strava.com/login")
+            self.browser.get(self._BASE_URL + "login")
             self.browser.find_element(By.CLASS_NAME,
                                       "btn-accept-cookie-banner").click()
             # Cookies are found
@@ -128,7 +127,7 @@ class Strava:  # pylint: disable=too-few-public-methods
         """
         if self._authorization:
             try:
-                self.browser.get(self._CLUB_URL + str(self.club_id))
+                self.browser.get(self._BASE_URL + "clubs/" + str(self.club_id))
                 # time.sleep(1)
                 # Click on the button to show the leaderboard of the last week
                 self.browser.find_element(By.CLASS_NAME, "last-week").click()
