@@ -168,7 +168,7 @@ class Strava:  # pylint: disable=too-few-public-methods
                 self.logging.info(
                     "A list of dictionaries with athlete data from the table"
                     "has been generated %s athletes of the club %s",
-                    len(last_week_leaders), self.get_name_club)
+                    len(last_week_leaders), self.get_info_club['name'])
 
                 return last_week_leaders
             except TimeoutException as error:
@@ -176,26 +176,41 @@ class Strava:  # pylint: disable=too-few-public-methods
         raise AuthorizationFailureException("Authorization failed")
 
     @property
-    def get_name_club(self) -> str | None:
+    def get_info_club(self) -> dict | None:
         """Get the name of the club.
         :return: Club's name
         """
+        url_club = self._BASE_URL + "clubs/" + str(self.club_id)
         try:
-            self.browser.get(self._BASE_URL + "clubs/" + str(self.club_id))
+            self.browser.get(url_club)
+            sport = self.browser.find_element(
+                By.CLASS_NAME, "location").find_element(
+                By.TAG_NAME, "span").text.strip()
+            location = self.browser.find_element(
+                By.CLASS_NAME, "location").text.replace(sport, "").strip()
+            site = self.browser.find_element(
+                By.CLASS_NAME, "text-footnote").text.strip()
+            description = self.browser.find_element(
+                By.CLASS_NAME, "club-description").text.strip()
             try:
                 status = self.browser.find_element(
                     By.CLASS_NAME, "spans11").find_element(
                     By.TAG_NAME, "h1").find_element(
                     By.TAG_NAME, "span").text.strip()
+                club_name = self.browser.find_element(
+                    By.CLASS_NAME, "spans11").find_element(
+                    By.TAG_NAME, "h1").text.replace(status, "").strip()
             except NoSuchElementException:
                 club_name = self.browser.find_element(
                     By.CLASS_NAME, "spans11").find_element(
                     By.TAG_NAME, "h1").text.strip()
-                return club_name
-            club_name = self.browser.find_element(
-                By.CLASS_NAME, "spans11").find_element(
-                By.TAG_NAME, "h1").text.replace(status, "").strip()
-            return club_name
+            return dict(
+                name=club_name,
+                sport=sport,
+                location=location,
+                description=description,
+                site=site,
+                url_club=url_club)
         except TimeoutException as error:
             self.logging.error(error)
         finally:
@@ -207,3 +222,4 @@ class Strava:  # pylint: disable=too-few-public-methods
 if __name__ == '__main__':
     s = Strava(582642, "sergbondckua@***.com", "*****")  # 582642
     print(s.get_last_week_leaders())
+    # print(s.get_info_club)
