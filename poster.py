@@ -28,7 +28,7 @@ class Poster:
     __ubuntu_font = path.join(_BASE_DIR, 'resources/fonts/Ubuntu-Regular.ttf')
     __symbol_font = path.join(_BASE_DIR, 'resources/fonts/Symbola-AjYx.ttf')
 
-    def __init__(self, leaders: dict):
+    def __init__(self, leaders: list):
         self.leaders = leaders
         self.logging = logging.getLogger(__name__)
         self.logo = Image.open(path.join(
@@ -40,7 +40,7 @@ class Poster:
         self.out = Image.open(path.join(
             self._BASE_DIR, 'resources/images/background.png'))
         self.out_2 = Image.open(path.join(
-            self._BASE_DIR, 'resources/images/background2.png'))
+            self._BASE_DIR, 'resources/images/background_2.png'))
         self.font = ImageFont.truetype(self.__ubuntu_font, size=30)
 
     @staticmethod
@@ -93,22 +93,26 @@ class Poster:
 
         for place, sportsmen in enumerate(self.leaders[:26]):
 
-            # Если символы в имени (строке) спортсмена не поддерживаются шрифтом заменяем на шрифт,
+            # Если символы в имени (строке) спортсмена
+            # не поддерживаются шрифтом заменяем на шрифт,
             # который это умеет
-            if char_in_font(sportsmen.get('athlete_name')[:1], TTFont(ubuntu_font)):
-                font = ImageFont.truetype(symbol_font, size=26)
+            if self.char_in_font(
+                    sportsmen.get('athlete_name')[:1], TTFont(self.__ubuntu_font)):
+                self.font = ImageFont.truetype(self.__symbol_font, size=26)
             else:
-                font = ImageFont.truetype(ubuntu_font, size=30)
+                self.font = ImageFont.truetype(self.__ubuntu_font, size=30)
 
             # Аватарку спортсмена уменьшаем до нужных размеров
-            avatar = Image.open(urlopen(sportsmen.get('avatar_medium'))).convert('RGBA').resize(
-                (60, 60))
-            avatar_top_3 = Image.open(urlopen(sportsmen.get('avatar_large'))).convert(
+            avatar = Image.open(
+                urlopen(sportsmen.get('avatar_medium'))).convert(
+                'RGBA').resize((60, 60))
+            avatar_top_3 = Image.open(
+                urlopen(sportsmen.get('avatar_large'))).convert(
                 'RGBA').resize((124, 124))
 
             # Делаем аватарки круглыми
-            crop_to_circle(avatar)
-            crop_to_circle(avatar_top_3)
+            self.crop_to_circle(avatar)
+            self.crop_to_circle(avatar_top_3)
 
             # Формируем первый список изображение, ТОП10
             if place <= 9:
@@ -120,41 +124,44 @@ class Poster:
                         coordinate = (130, 55)
                     elif place == 2:  # Третье место
                         coordinate = (385, 60)
-                    out.paste(avatar_top_3, coordinate, avatar_top_3)
+                    self.out.paste(avatar_top_3, coordinate, avatar_top_3)
 
-                out.paste(avatar, (60, shift), avatar)
+                self.out.paste(avatar, (60, shift), avatar)
                 emoji_text.text((20, shift + 20),
                                 f"{sportsmen.get('rank')}.",
-                                font=ImageFont.truetype(ubuntu_font, size=30),
+                                font=self.font,
                                 fill='#1b0f13'
                                 )
 
                 emoji_text.text((140, shift + 20),
-                                f"{sportsmen.get('athlete_name')} 🔸 {sportsmen.get('distance')}",
-                                font=font,
+                                f"{sportsmen.get('athlete_name')} 🔸 "
+                                f"{sportsmen.get('distance')}",
+                                font=self.font,
                                 fill='#1b0f13'
                                 )
                 shift += 62
             # Формируем первый список изоборажение, все остальные
             else:
-                out2.paste(avatar, (60, shift_2), avatar)
+                self.out_2.paste(avatar, (60, shift_2), avatar)
                 emoji_text2.text((20, shift_2 + 20),
                                  f"{sportsmen.get('rank')}.",
-                                 font=ImageFont.truetype(ubuntu_font, size=30),
+                                 font=self.font,
                                  fill='#1b0f13'
                                  )
 
                 emoji_text2.text((140, shift_2 + 20),
-                                 f"{sportsmen.get('athlete_name')} 🔸 {sportsmen.get('distance')}",
-                                 font=font,
+                                 f"{sportsmen.get('athlete_name')}"
+                                 f" 🔸 {sportsmen.get('distance')}",
+                                 font=self.font,
                                  fill='#1b0f13'
                                  )
                 shift_2 += 62
             # Сохраняем созданное изображение и закрываем
-        out.save(os.path.join(start.BASE_DIR, 'images/out/out1.png'), 'PNG')
-        out.close()
+        self.out.save(path.join(
+            self._BASE_DIR, 'out/out1.png'), 'PNG')
+        self.out.close()
         # Сохраняем созданное изображение и закрываем
-        out2.save(os.path.join(start.BASE_DIR, 'images/out/out2.png'), 'PNG')
-        out2.close()
-        start.logging.info('Постеры готовы и сохранены')
-
+        self.out_2.save(path.join(
+            self._BASE_DIR, 'out/out2.png'), 'PNG')
+        self.out_2.close()
+        self.logging.info('Posters are ready and saved')

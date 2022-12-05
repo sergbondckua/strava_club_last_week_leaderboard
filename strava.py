@@ -17,6 +17,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 from fake_useragent import UserAgent
+import poster
 
 # Enable logging
 logging.basicConfig(
@@ -220,6 +221,6 @@ class Strava:  # pylint: disable=too-few-public-methods
 
 
 if __name__ == '__main__':
-    s = Strava(582642, "sergbondckua@***.com", "*****")  # 582642
-    print(s.get_last_week_leaders())
-    # print(s.get_info_club)
+    s = Strava(582642, "sergbondckua@gmail.com", "Q10101010")  # 582642
+    d = poster.Poster(s.get_last_week_leaders())
+    d.create_poster()
