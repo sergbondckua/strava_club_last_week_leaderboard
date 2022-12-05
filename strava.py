@@ -1,14 +1,14 @@
 """Connection, authorization, parsing to Strava Club"""
 
-import os
 import pickle
 import time
 from pathlib import Path
 import logging
+from os import path, remove
 
 # Selenium modules
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver import Chrome
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -35,6 +35,9 @@ class Strava:  # pylint: disable=too-few-public-methods
         club_id (int): Club ID
         email (str): Login
         password (str): Password
+    Methods:
+        _authorization -> True if authorization is successful:
+        get_last_week_leaders() -> List of last week leaders club:
     """
     _BASE_DIR = Path(__file__).resolve().parent
     _BASE_URL = "https://www.strava.com/"
@@ -45,14 +48,14 @@ class Strava:  # pylint: disable=too-few-public-methods
         self.email = email
         self.club_id = club_id
         self.logging = logging.getLogger(__name__)
-        self.service=Service(self.__chromedriver)  # Service
+        self.service = Service(self.__chromedriver)  # Service webdriver
         self.options = Options()  # Options webdriver
-        # self.options.add_argument("--headless")  # running in the background
+        self.options.add_argument("--headless")  # Running in the background
         self.options.add_argument("--no-sandbox")  # Disable sandbox
         self.options.add_argument(
             "--disable-blink-features=AutomationControlled")  # To not detected
         self.options.add_argument(f"userAgent={UserAgent().random}")
-        self.browser = Chrome(service=self.service), options=self.options)
+        self.browser = Chrome(service=self.service, options=self.options)
 
     @property
     def _authorization(self) -> bool:
@@ -64,13 +67,12 @@ class Strava:  # pylint: disable=too-few-public-methods
             self.browser.find_element(By.CLASS_NAME,
                                       "btn-accept-cookie-banner").click()
             # Cookies are found
-            if os.path.isfile(os.path.join(
-                    self._BASE_DIR,
-                    f"cookies/{self.email.split('@')[0]}")):
+            if path.isfile(path.join(self._BASE_DIR,
+                                     f"cookies/{self.email.split('@')[0]}")):
                 self.logging.info("Cookie file found. Try authorization.")
                 # Open the cookie and use it for authorization
-                with open(os.path.join(self._BASE_DIR,
-                                       f"cookies/{self.email.split('@')[0]}"),
+                with open(path.join(self._BASE_DIR,
+                                    f"cookies/{self.email.split('@')[0]}"),
                           "rb") as cookie:
                     for row in pickle.load(cookie):
                         self.browser.add_cookie(row)
@@ -80,9 +82,9 @@ class Strava:  # pylint: disable=too-few-public-methods
                 # Check valid or delete file
                 if "Log In" in self.browser.title:
                     self.logging.error("Invalid cookies. Delete cookies")
-                    os.remove(
-                        os.path.join(self._BASE_DIR,
-                                     f"cookies/{self.email.split('@')[0]}"))
+                    remove(
+                        path.join(self._BASE_DIR,
+                                  f"cookies/{self.email.split('@')[0]}"))
                 else:
                     self.logging.info("Authorization successful!")
                     return True
@@ -106,9 +108,9 @@ class Strava:  # pylint: disable=too-few-public-methods
             if "Log In" not in self.browser.title:
                 self.logging.info("Authorization successful!")
                 # Get cookies and save to a file
-                with open(os.path.join(
-                        self._BASE_DIR, f"cookies/{self.email.split('@')[0]}"),
-                        "wb") as cookie:
+                with open(path.join(self._BASE_DIR,
+                                    f"cookies/{self.email.split('@')[0]}"),
+                          "wb") as cookie:
                     pickle.dump(self.browser.get_cookies(), cookie)
                     self.logging.info("Cookie file is saved.")
                 return True
@@ -128,11 +130,11 @@ class Strava:  # pylint: disable=too-few-public-methods
         if self._authorization:
             try:
                 self.browser.get(self._BASE_URL + "clubs/" + str(self.club_id))
-                # time.sleep(1)
+                time.sleep(0.5)
                 # Click on the button to show the leaderboard of the last week
                 self.browser.find_element(By.CLASS_NAME, "last-week").click()
                 self.logging.info("Go to last week's leaderboard")
-                # time.sleep(1)
+                time.sleep(0.5)
                 last_week_leaders = []
                 lst = []
 
@@ -165,17 +167,43 @@ class Strava:  # pylint: disable=too-few-public-methods
 
                 self.logging.info(
                     "A list of dictionaries with athlete data from the table"
-                    "has been generated %s athletes", len(last_week_leaders))
+                    "has been generated %s athletes of the club %s",
+                    len(last_week_leaders), self.get_name_club)
 
                 return last_week_leaders
             except TimeoutException as error:
                 self.logging.error(error)
-            finally:
-                self.browser.close()
-                self.browser.quit()
         raise AuthorizationFailureException("Authorization failed")
+
+    @property
+    def get_name_club(self) -> str | None:
+        """Get the name of the club.
+        :return: Club's name
+        """
+        try:
+            self.browser.get(self._BASE_URL + "clubs/" + str(self.club_id))
+            try:
+                status = self.browser.find_element(
+                    By.CLASS_NAME, "spans11").find_element(
+                    By.TAG_NAME, "h1").find_element(
+                    By.TAG_NAME, "span").text.strip()
+            except NoSuchElementException:
+                club_name = self.browser.find_element(
+                    By.CLASS_NAME, "spans11").find_element(
+                    By.TAG_NAME, "h1").text.strip()
+                return club_name
+            club_name = self.browser.find_element(
+                By.CLASS_NAME, "spans11").find_element(
+                By.TAG_NAME, "h1").text.replace(status, "").strip()
+            return club_name
+        except TimeoutException as error:
+            self.logging.error(error)
+        finally:
+            self.browser.close()
+            self.browser.quit()
+        return None
 
 
 if __name__ == '__main__':
-    s = Strava(582642, "login@gmail.com", "******")
+    s = Strava(582642, "sergbondckua@***.com", "*****")  # 582642
     print(s.get_last_week_leaders())
