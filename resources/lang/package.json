@@ -1,0 +1,14 @@
+{
+  "en": {
+    "name_locale": "en_US",
+    "description": "Summary of %W-th running week (%B, %Y)"
+  },
+  "ukr": {
+    "name_locale": "uk_UA",
+    "description": "Підсумок %W-го бігового тижня (%B, %Y р.)"
+  },
+  "de": {
+    "name_locale": "de_DE",
+    "description": "Zusammenfassung der %W-ten laufenden Woche (%B, %Y)"
+  }
+}

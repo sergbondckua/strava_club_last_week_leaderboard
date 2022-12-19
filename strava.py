@@ -17,7 +17,6 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 from fake_useragent import UserAgent
-import poster
 
 # Enable logging
 logging.basicConfig(
@@ -30,10 +29,9 @@ class AuthorizationFailureException(Exception):
     """Exception raised when authorization fails"""
 
 
-class Strava:  # pylint: disable=too-few-public-methods
+class Strava:
     """Connection operations and capabilities
     Attributes:
-        club_id (int): Club ID
         email (str): Login
         password (str): Password
     Methods:
@@ -44,10 +42,9 @@ class Strava:  # pylint: disable=too-few-public-methods
     _BASE_URL = "https://www.strava.com/"
     __chromedriver = ChromeDriverManager().install()
 
-    def __init__(self, club_id: int, email: str, password: str):
+    def __init__(self, email: str, password: str):
         self.password = password
         self.email = email
-        self.club_id = club_id
         self.logging = logging.getLogger(__name__)
         self.service = Service(self.__chromedriver)  # Service webdriver
         self.options = Options()  # Options webdriver
@@ -124,13 +121,15 @@ class Strava:  # pylint: disable=too-few-public-methods
         self.browser.quit()
         return False
 
-    def get_last_week_leaders(self) -> list:
+    def get_last_week_leaders(self, club_id: int) -> list:
         """Get the last week leaders.
+        Args:
+            :club_id (int): Club ID
         :return: List of dicts last week leaders
         """
         if self._authorization:
             try:
-                self.browser.get(self._BASE_URL + "clubs/" + str(self.club_id))
+                self.browser.get(self._BASE_URL + "clubs/" + str(club_id))
                 time.sleep(0.5)
                 # Click on the button to show the leaderboard of the last week
                 self.browser.find_element(By.CLASS_NAME, "last-week").click()
@@ -169,19 +168,21 @@ class Strava:  # pylint: disable=too-few-public-methods
                 self.logging.info(
                     "A list of dictionaries with athlete data from the table"
                     "has been generated %s athletes of the club %s",
-                    len(last_week_leaders), self.get_info_club['name'])
+                    len(last_week_leaders),
+                    self.get_info_club(club_id)['name'])
 
-                return last_week_leaders
+                return [last_week_leaders, self.get_info_club(club_id)]
             except TimeoutException as error:
                 self.logging.error(error)
         raise AuthorizationFailureException("Authorization failed")
 
-    @property
-    def get_info_club(self) -> dict | None:
+    def get_info_club(self, club_id: int) -> dict | None:
         """Get the name of the club.
+        Args:
+            :club_id: The club identifier
         :return: Club's name
         """
-        url_club = self._BASE_URL + "clubs/" + str(self.club_id)
+        url_club = self._BASE_URL + "clubs/" + str(club_id)
         try:
             self.browser.get(url_club)
             sport = self.browser.find_element(
@@ -218,9 +219,3 @@ class Strava:  # pylint: disable=too-few-public-methods
             self.browser.close()
             self.browser.quit()
         return None
-
-
-if __name__ == '__main__':
-    s = Strava(582642, "sergbondckua@gmail.com", "Q10101010")  # 582642
-    d = poster.Poster(s.get_last_week_leaders())
-    d.create_poster()
