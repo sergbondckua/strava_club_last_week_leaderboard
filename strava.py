@@ -171,7 +171,7 @@ class Strava:
                     len(last_week_leaders),
                     self.get_info_club(club_id)['name'])
 
-                return [last_week_leaders, self.get_info_club(club_id)]
+                return last_week_leaders
             except TimeoutException as error:
                 self.logging.error(error)
         raise AuthorizationFailureException("Authorization failed")
