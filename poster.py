@@ -1,5 +1,7 @@
 """Create a poster with the given leaders"""
 import logging
+import os
+import re
 import ssl
 from os import path
 from pathlib import Path
@@ -41,7 +43,7 @@ class Poster:
         self.emoji_text2 = Pilmoji(self.out_2)
 
     @staticmethod
-    def char_in_font(unicode_char: str, font: ImageFont) -> bool:
+    def char_in_font(unicode_char: str, font: TTFont) -> bool:
         """ Checks if the font supports a character in a string,
         if it doesn't support True
         :param unicode_char: the character to check
@@ -52,6 +54,23 @@ class Poster:
             if cmap.isUnicode() and ord(unicode_char) in cmap.cmap:
                 return False
         return True
+
+    def set_font(self, symbol: str, default_font: TTFont):
+        """Set the font to a given symbol"""
+        for char_map in default_font["cmap"].tables:
+            if char_map.isUnicode() and ord(symbol) in char_map.cmap:
+                return self.font
+        fonts_list = [file for files in os.walk(
+            path.join(self._BASE_DIR, "resources/fonts")) for file in files[-1]]
+        for font in sorted(fonts_list):
+            ttf = TTFont(path.join(self._BASE_DIR, f"resources/fonts/{font}"))
+            for char_map in ttf["cmap"].tables:
+                if char_map.isUnicode() and ord(symbol) in char_map.cmap:
+                    print(font, "YES")
+                    return ImageFont.truetype(
+                        path.join(self._BASE_DIR, f"resources/fonts/{font}"),
+                        size=26)
+        return self.font
 
     @staticmethod
     def crop_to_circle(img: Image):
@@ -92,13 +111,15 @@ class Poster:
         self.logging.info("Posters with the rating of athletes are created")
 
         for place, sportsmen in enumerate(self.leaders[:26]):
-            font = self.font
+            font = self.set_font(
+                re.search(r"\w", sportsmen.get("athlete_name")).group(0),
+                TTFont(self.__ubuntu_font))
             # If the characters in the name (string) of the athlete are not
             # supported by the font, we replace it with a font that can do this
-            if self.char_in_font(
-                    sportsmen.get("athlete_name").split(" ")[1][:1],
-                    TTFont(self.__ubuntu_font)):
-                font = ImageFont.truetype(self.__symbol_font, size=26)
+            # if self.char_in_font(
+            #         re.search(r"\w", sportsmen.get("athlete_name")).group(0),
+            #         TTFont(self.__ubuntu_font)):
+            #     font = ImageFont.truetype(self.__symbol_font, size=26)
 
             # Resize the athlete's avatar to the desired size
             with urlopen(
@@ -172,3 +193,7 @@ class Poster:
         self.out_2.save(path.join(self._BASE_DIR, "out_posters/out2.png"), "PNG")
         self.out_2.close()
         self.logging.info("Posters are ready and saved")
+
+
+# if __name__ == '__main__':
+#     print(Poster([{1: 2}]).set_font("が"))

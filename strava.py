@@ -180,7 +180,7 @@ class Strava:
         """Get the name of the club.
         Args:
             :club_id: The club identifier
-        :return: Club's name
+        :return: Club's info
         """
         url_club = self._BASE_URL + "clubs/" + str(club_id)
         try:
