@@ -1,24 +1,31 @@
-"""Start Starava club rate"""
-import os
+from environs import Env
 
-from strava import Strava
-from poster import Poster
-from sender import SenderTelegram
+from parsing import Strava
+# from poster import Poster
+# from sender import SenderTelegram
+
+# Read environment variables
+env = Env()
+env.read_env()
 
 
 def main():
     """Main function"""
-    # Auth on Strava and get leaders club
-    my_strava = Strava(email=os.getenv("LOGIN"), password=os.getenv("PASSWD"))
-    rank_in_club = my_strava.get_last_week_leaders(club_id=96511)
-    # Create posters of leaders
-    Poster(rank_in_club).create_poster()
-    # Sending posters via Telegram
-    send = SenderTelegram(token_bot=os.getenv("TOKEN_BOT"))
-    send.telegram_send(os.getenv("CHAT_ID"),
-                       language="en",
-                       strava_club_id=1028327)
+
+    with Strava(email=env.str("EMAIL"), password=env.str("PASSWD")) as strava:
+        rank_in_club = strava.get_this_week_or_last_week_leaders(
+            env.int("CLUB_ID")
+        )
+        print(rank_in_club)
+
+    # # Create posters of leaders
+    # Poster(rank_in_club).create_poster()
+    # # Sending posters via Telegram
+    # send = SenderTelegram(token_bot=os.getenv("TOKEN_BOT"))
+    # send.telegram_send(
+    #     os.getenv("CHAT_ID"), language="en", strava_club_id=1028327
+    # )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
