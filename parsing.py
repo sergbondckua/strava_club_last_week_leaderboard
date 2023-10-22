@@ -130,7 +130,9 @@ class Strava:
     def open_page_club(self, club_id: int):
         """Open browser and go to url"""
 
-        self.browser.get(self.BASE_URL + "clubs/" + str(club_id))
+        self.browser.get(
+            self.BASE_URL + "clubs/" + str(club_id) + "/leaderboard"
+        )
         self.logger.info("Open page club URL: %s", self.browser.current_url)
 
     def wait_element(self, by_element: tuple, timeout: int = 10) -> WebElement:

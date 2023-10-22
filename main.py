@@ -14,7 +14,8 @@ def main():
 
     with Strava(email=env.str("EMAIL"), password=env.str("PASSWD")) as strava:
         rank_in_club = strava.get_this_week_or_last_week_leaders(
-            env.int("CLUB_ID")
+            env.int("CLUB_ID"),
+            False,
         )
         print(rank_in_club)
 
