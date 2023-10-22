@@ -1,14 +1,37 @@
+import logging
 import ssl
+from os import path
+from pathlib import Path
+
 import certifi
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import aiohttp
 import asyncio
 
+from pilmoji import Pilmoji
+
+# Enable logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+
 
 class CreatePosterAthletes:
     def __init__(self, athletes: list[dict]):
+        self.logger = logging.getLogger(__name__)
         self.athletes = athletes
+        self.base_dir = Path(__file__).resolve().parent
+        self.image = Image.open(
+            path.join(self.base_dir, "resources/images/background.png")
+        )
+        self.font = ImageFont.truetype(
+            path.join(self.base_dir, "resources/fonts/Ubuntu-Regular.ttf"),
+            size=30,
+        )
+        self.draw = ImageDraw.Draw(self.image)
+        self.emoji_text = Pilmoji(self.image)
         # Создаем клиентскую сессию и TCPConnector в конструкторе
         self.ssl_context = ssl.create_default_context(cafile=certifi.where())
         self.connector = aiohttp.TCPConnector(ssl=self.ssl_context)
@@ -29,8 +52,10 @@ class CreatePosterAthletes:
         avatar_url: str,
         border_color: str = "#fff",
         border_width: int = 2,
+        size: int = 60,
     ) -> Image.Image:
-        avatar = await self._load_user_avatar(avatar_url)
+        open_url = await self._load_user_avatar(avatar_url)
+        avatar = open_url.resize((size, size))
         if avatar is not None:
             size = min(avatar.size)
             mask = Image.new("L", (size, size), 0)
@@ -52,6 +77,40 @@ class CreatePosterAthletes:
     def close(self):
         # Закрытие клиентской сессии при завершении работы
         self.session.close()
+
+    def cap_poster(self):
+        logo = Image.open(
+            path.join(self.base_dir, "resources/images/logo.png")
+        )
+        strava = Image.open(
+            path.join(self.base_dir, "resources/images/strava.png")
+        )
+        cup = Image.open(path.join(self.base_dir, "resources/images/cup.png"))
+
+        # Icons on the "out" background
+        self.image.paste(cup, (130, 150), cup)
+        self.image.paste(logo, (5, 5), logo)
+        self.image.paste(strava, (538, 0), strava)
+
+        self.emoji_text.text((538, 240), "🔟\n🔝", font=self.font)
+        return self.image
+
+    async def poster(self):
+        for athlete in self.athletes:
+            rank = athlete["rank"]
+            name = athlete["athlete_name"]
+            distance = athlete["distance"]
+            avatar_url = athlete["avatar_large"]
+            avatar_image = await self._make_circular_avatar(avatar_url)
+            self.image.paste(avatar_image, (20, 362))
+
+            # Рисуем текст на изображении
+            self.emoji_text.text(
+                (20, 362),
+                f"{rank} {name} {distance}",
+                fill="#1b0f13",
+                font=self.font,
+            )
 
 
 async def process_image():
@@ -80,46 +139,13 @@ async def process_image():
             "avatar_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/37620439/11064752/4/medium.jpg",
             "link": "https://www.strava.com/athletes/37620439",
         },
-        {
-            "rank": "3",
-            "athlete_name": "Yevhenii Kukhol 🇺🇦",
-            "distance": "63.2 km",
-            "activities": "9",
-            "longest": "12.3 km",
-            "avg_pace": "5:04 /km",
-            "elev_gain": "272 m",
-            "avatar_large": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/64522338/18318527/2/large.jpg",
-            "avatar_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/64522338/18318527/2/medium.jpg",
-            "link": "https://www.strava.com/athletes/64522338",
-        },
-        {
-            "rank": "4",
-            "athlete_name": "Оля Моргун🇺🇦",
-            "distance": "52.7 km",
-            "activities": "4",
-            "longest": "16.1 km",
-            "avg_pace": "6:15 /km",
-            "elev_gain": "895 m",
-            "avatar_large": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/31197384/13320843/3/large.jpg",
-            "avatar_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/31197384/13320843/3/medium.jpg",
-            "link": "https://www.strava.com/athletes/31197384",
-        },
-        {
-            "rank": "5",
-            "athlete_name": "Руслан Тищенко",
-            "distance": "46.0 km",
-            "activities": "2",
-            "longest": "30.0 km",
-            "avg_pace": "5:27 /km",
-            "elev_gain": "349 m",
-            "avatar_large": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/30094594/9033194/7/large.jpg",
-            "avatar_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/30094594/9033194/7/medium.jpg",
-            "link": "https://www.strava.com/athletes/30094594",
-        },
     ]
     image_url = "https://dgalywyr863hv.cloudfront.net/pictures/athletes/37620439/11064752/4/large.jpg"
-    rounded_image = CreatePosterAthletes(athletes)
+    rounded_image = CreatePosterAthletes(athletes[:1])
     avatar = await rounded_image._make_circular_avatar(image_url)
+    poster = rounded_image.cap_poster()
+    await rounded_image.poster()
+    poster.show()
     avatar.show()
 
 

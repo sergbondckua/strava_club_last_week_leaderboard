@@ -1,7 +1,7 @@
 from environs import Env
 
 from parsing import Strava
-# from poster import Poster
+from poster import Poster
 # from sender import SenderTelegram
 
 # Read environment variables
@@ -19,8 +19,8 @@ def main():
         )
         print(rank_in_club)
 
-    # # Create posters of leaders
-    # Poster(rank_in_club).create_poster()
+    # Create posters of leaders
+    Poster(rank_in_club).create_poster()
     # # Sending posters via Telegram
     # send = SenderTelegram(token_bot=os.getenv("TOKEN_BOT"))
     # send.telegram_send(

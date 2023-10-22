@@ -8,24 +8,20 @@ from pathlib import Path
 from urllib.request import urlopen
 
 import certifi
-from PIL import (
-    Image,
-    ImageChops,
-    ImageDraw,
-    ImageFont
-)
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 from pilmoji import Pilmoji
 from fontTools.ttLib import TTFont
 
 # Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
+    level=logging.INFO,
 )
 
 
 class Poster:
     """Create a poster with the given leaders"""
+
     _BASE_DIR = Path(__file__).resolve().parent
     __ubuntu_font = path.join(_BASE_DIR, "resources/fonts/Ubuntu-Regular.ttf")
     __symbol_font = path.join(_BASE_DIR, "resources/fonts/Symbola-AjYx.ttf")
@@ -33,10 +29,12 @@ class Poster:
     def __init__(self, leaders: list):
         self.leaders = leaders
         self.logging = logging.getLogger(__name__)
-        self.out = Image.open(path.join(
-            self._BASE_DIR, "resources/images/background.png"))
-        self.out_2 = Image.open(path.join(
-            self._BASE_DIR, "resources/images/background_2.png"))
+        self.out = Image.open(
+            path.join(self._BASE_DIR, "resources/images/background.png")
+        )
+        self.out_2 = Image.open(
+            path.join(self._BASE_DIR, "resources/images/background_2.png")
+        )
         self.font = ImageFont.truetype(self.__ubuntu_font, size=30)
         # Icons and text on the "out and out_2" background
         self.emoji_text = Pilmoji(self.out)
@@ -44,24 +42,22 @@ class Poster:
 
     @staticmethod
     def char_in_font(unicode_char: str, font: TTFont) -> bool:
-        """ Checks if the font supports a character in a string,
-        if it doesn't support True
-        :param unicode_char: the character to check
-        :param font: the font to check
-        :return: True if the character is in the font, False otherwise
-        """
-        for cmap in font["cmap"].tables:
-            if cmap.isUnicode() and ord(unicode_char) in cmap.cmap:
-                return False
-        return True
+        """Checks if the font supports a character in a string. Returns True if not supported."""
+        return all(
+            not cmap.isUnicode() or ord(unicode_char) not in cmap.cmap
+            for cmap in font["cmap"].tables
+        )
 
     def set_font(self, symbol: str, default_font: TTFont):
         """Set the font to a given symbol"""
         for char_map in default_font["cmap"].tables:
             if char_map.isUnicode() and ord(symbol) in char_map.cmap:
                 return self.font
-        fonts_list = [file for files in os.walk(
-            path.join(self._BASE_DIR, "resources/fonts")) for file in files[-1]]
+        fonts_list = [
+            file
+            for files in os.walk(path.join(self._BASE_DIR, "resources/fonts"))
+            for file in files[-1]
+        ]
         for font in sorted(fonts_list):
             ttf = TTFont(path.join(self._BASE_DIR, f"resources/fonts/{font}"))
             for char_map in ttf["cmap"].tables:
@@ -69,12 +65,13 @@ class Poster:
                     print(font, "YES")
                     return ImageFont.truetype(
                         path.join(self._BASE_DIR, f"resources/fonts/{font}"),
-                        size=26)
+                        size=26,
+                    )
         return self.font
 
     @staticmethod
     def crop_to_circle(img: Image):
-        """ Creates a round photo frame and crops
+        """Creates a round photo frame and crops
         to make it round with a border
         :param img: the image to crop
         :return: the cropped image
@@ -86,19 +83,21 @@ class Poster:
         mask = ImageChops.darker(mask, img.split()[-1])
         img.putalpha(mask)
         border = Image.new("RGBA", big_size, 0)
-        ImageDraw.Draw(border).ellipse((0, 0) + big_size,
-                                       fill=0, outline="#fff", width=3)
+        ImageDraw.Draw(border).ellipse(
+            (0, 0) + big_size, fill=0, outline="#fff", width=3
+        )
         border = border.resize(img.size, Image.LANCZOS)
         img.paste(border, (0, 0), border)
 
     def create_poster(self):
         """Create a poster"""
-        logo = Image.open(path.join(
-            self._BASE_DIR, "resources/images/logo.png"))
-        strava = Image.open(path.join(
-            self._BASE_DIR, "resources/images/strava.png"))
-        cup = Image.open(path.join(
-            self._BASE_DIR, "resources/images/cup.png"))
+        logo = Image.open(
+            path.join(self._BASE_DIR, "resources/images/logo.png")
+        )
+        strava = Image.open(
+            path.join(self._BASE_DIR, "resources/images/strava.png")
+        )
+        cup = Image.open(path.join(self._BASE_DIR, "resources/images/cup.png"))
         # Icons on the "out" background
         self.out.paste(cup, (130, 150), cup)
         self.out.paste(logo, (5, 5), logo)
@@ -113,7 +112,8 @@ class Poster:
         for place, sportsmen in enumerate(self.leaders[:26]):
             font = self.set_font(
                 re.search(r"\w", sportsmen.get("athlete_name")).group(0),
-                TTFont(self.__ubuntu_font))
+                TTFont(self.__ubuntu_font),
+            )
             # If the characters in the name (string) of the athlete are not
             # supported by the font, we replace it with a font that can do this
             # if self.char_in_font(
@@ -123,18 +123,20 @@ class Poster:
 
             # Resize the athlete's avatar to the desired size
             with urlopen(
-                    sportsmen.get("avatar_medium"),
-                    context=ssl.create_default_context(
-                        cafile=certifi.where())) as avatar_medium:
-                avatar = Image.open(
-                    avatar_medium).convert("RGBA").resize((60, 60))
+                sportsmen.get("avatar_medium"),
+                context=ssl.create_default_context(cafile=certifi.where()),
+            ) as avatar_medium:
+                avatar = (
+                    Image.open(avatar_medium).convert("RGBA").resize((60, 60))
+                )
 
             with urlopen(
-                    sportsmen.get("avatar_large"),
-                    context=ssl.create_default_context(
-                        cafile=certifi.where())) as avatar_large:
-                avatar_top_3 = Image.open(
-                    avatar_large).convert("RGBA").resize((124, 124))
+                sportsmen.get("avatar_large"),
+                context=ssl.create_default_context(cafile=certifi.where()),
+            ) as avatar_large:
+                avatar_top_3 = (
+                    Image.open(avatar_large).convert("RGBA").resize((124, 124))
+                )
 
             # Making avatars round
             self.crop_to_circle(avatar)
@@ -153,44 +155,46 @@ class Poster:
                     self.out.paste(avatar_top_3, coordinate, avatar_top_3)
 
                 self.out.paste(avatar, (60, shift), avatar)
-                self.emoji_text.text((20, shift + 20),
-                                     f"{sportsmen.get('rank')}.",
-                                     font=ImageFont.truetype(
-                                         self.__ubuntu_font,
-                                         size=30),
-                                     fill="#1b0f13"
-                                     )
+                self.emoji_text.text(
+                    (20, shift + 20),
+                    f"{sportsmen.get('rank')}.",
+                    font=ImageFont.truetype(self.__ubuntu_font, size=30),
+                    fill="#1b0f13",
+                )
 
-                self.emoji_text.text((140, shift + 20),
-                                     f"{sportsmen.get('athlete_name')} 🔸 "
-                                     f"{sportsmen.get('distance')}",
-                                     font=font,
-                                     fill="#1b0f13"
-                                     )
+                self.emoji_text.text(
+                    (140, shift + 20),
+                    f"{sportsmen.get('athlete_name')} 🔸 "
+                    f"{sportsmen.get('distance')}",
+                    font=font,
+                    fill="#1b0f13",
+                )
                 shift += 62
             # We form the first list of images, all the rest
             else:
                 self.out_2.paste(avatar, (60, shift_2), avatar)
-                self.emoji_text2.text((20, shift_2 + 20),
-                                      f"{sportsmen.get('rank')}.",
-                                      font=ImageFont.truetype(
-                                          self.__ubuntu_font,
-                                          size=30),
-                                      fill="#1b0f13"
-                                      )
+                self.emoji_text2.text(
+                    (20, shift_2 + 20),
+                    f"{sportsmen.get('rank')}.",
+                    font=ImageFont.truetype(self.__ubuntu_font, size=30),
+                    fill="#1b0f13",
+                )
 
-                self.emoji_text2.text((140, shift_2 + 20),
-                                      f"{sportsmen.get('athlete_name')} 🔸 "
-                                      f"{sportsmen.get('distance')}",
-                                      font=font,
-                                      fill="#1b0f13"
-                                      )
+                self.emoji_text2.text(
+                    (140, shift_2 + 20),
+                    f"{sportsmen.get('athlete_name')} 🔸 "
+                    f"{sportsmen.get('distance')}",
+                    font=font,
+                    fill="#1b0f13",
+                )
                 shift_2 += 62
         # Save the created image and close
         self.out.save(path.join(self._BASE_DIR, "out_posters/out1.png"), "PNG")
         self.out.close()
         # Save the created image and close
-        self.out_2.save(path.join(self._BASE_DIR, "out_posters/out2.png"), "PNG")
+        self.out_2.save(
+            path.join(self._BASE_DIR, "out_posters/out2.png"), "PNG"
+        )
         self.out_2.close()
         self.logging.info("Posters are ready and saved")
 
