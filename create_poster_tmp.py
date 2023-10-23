@@ -18,7 +18,7 @@ logging.basicConfig(
 )
 
 
-class CreatePosterAthletes:
+class PosterAthletes:
     def __init__(self, athletes: list[dict]):
         self.logger = logging.getLogger(__name__)
         self.athletes = athletes
@@ -26,12 +26,6 @@ class CreatePosterAthletes:
         self.image = Image.open(
             path.join(self.base_dir, "resources/images/background.png")
         )
-        self.font = ImageFont.truetype(
-            path.join(self.base_dir, "resources/fonts/Ubuntu-Regular.ttf"),
-            size=30,
-        )
-        self.draw = ImageDraw.Draw(self.image)
-        self.emoji_text = Pilmoji(self.image)
         # Создаем клиентскую сессию и TCPConnector в конструкторе
         self.ssl_context = ssl.create_default_context(cafile=certifi.where())
         self.connector = aiohttp.TCPConnector(ssl=self.ssl_context)
@@ -44,19 +38,20 @@ class CreatePosterAthletes:
                 image_bytes = await response.read()
                 return Image.open(BytesIO(image_bytes))
         except aiohttp.ClientError as e:
-            print(f"Error loading avatar: {str(e)}")
+            self.logger.error("Error loading avatar: %s", e)
             return None
 
     async def _make_circular_avatar(
         self,
         avatar_url: str,
         border_color: str = "#fff",
-        border_width: int = 2,
-        size: int = 60,
+        border_width: int = 1,
+        size=None,
     ) -> Image.Image:
-        open_url = await self._load_user_avatar(avatar_url)
-        avatar = open_url.resize((size, size))
-        if avatar is not None:
+        source_img = await self._load_user_avatar(avatar_url)
+
+        if source_img is not None:
+            avatar = source_img.resize((size, size)) if size else source_img
             size = min(avatar.size)
             mask = Image.new("L", (size, size), 0)
             draw = ImageDraw.Draw(mask)
@@ -65,20 +60,22 @@ class CreatePosterAthletes:
             avatar = avatar.crop((0, 0, size, size))
             avatar.putalpha(mask)
 
-            # Draw a circular border directly on the avatar image
             draw = ImageDraw.Draw(avatar)
             draw.ellipse(
                 (0, 0, size, size), outline=border_color, width=border_width
             )
 
             return avatar
-        raise ValueError("Image not found")
+        self.logger.error("Image not found: url=%s incorrect", avatar_url)
+        return Image.new(
+            "RGBA", (16, 16), (255, 255, 255, 0)
+        )  # Return a transparent image on error
 
-    def close(self):
+    async def close(self):
         # Закрытие клиентской сессии при завершении работы
-        self.session.close()
+        await self.session.close()
 
-    def cap_poster(self):
+    def _add_logos_and_icons(self, image):
         logo = Image.open(
             path.join(self.base_dir, "resources/images/logo.png")
         )
@@ -87,30 +84,63 @@ class CreatePosterAthletes:
         )
         cup = Image.open(path.join(self.base_dir, "resources/images/cup.png"))
 
-        # Icons on the "out" background
-        self.image.paste(cup, (130, 150), cup)
-        self.image.paste(logo, (5, 5), logo)
-        self.image.paste(strava, (538, 0), strava)
+        # Add icons and logos
+        image.paste(cup, (130, 150), cup)
+        image.paste(logo, (5, 5), logo)
+        image.paste(strava, (538, 0), strava)
 
-        self.emoji_text.text((538, 240), "🔟\n🔝", font=self.font)
-        return self.image
+        # Add text
+        Pilmoji(image).text((538, 240), "🔟\n🔝", font=self.font)
 
-    async def poster(self):
+    @property
+    def font(self):
+        return ImageFont.truetype(
+            path.join(self.base_dir, "resources/fonts/Ubuntu-Regular.ttf"),
+            size=30,
+        )
+
+    async def generate_poster(self, shift=0):
+
+        if shift == 0:
+            image = Image.open(
+                path.join(self.base_dir, "resources/images/background_2.png")
+            )
+        else:
+            image = self.image
+            self._add_logos_and_icons(image)
+
+        emoji_text = Pilmoji(image)
+
         for athlete in self.athletes:
             rank = athlete["rank"]
             name = athlete["athlete_name"]
             distance = athlete["distance"]
             avatar_url = athlete["avatar_large"]
-            avatar_image = await self._make_circular_avatar(avatar_url)
-            self.image.paste(avatar_image, (20, 362))
+            avatar_image = await self._make_circular_avatar(
+                avatar_url,
+                size=60,
+            )
 
-            # Рисуем текст на изображении
-            self.emoji_text.text(
-                (20, 362),
-                f"{rank} {name} {distance}",
+            image.paste(avatar_image, (60, shift), avatar_image)
+
+            # Drawing text on an image
+            emoji_text.text(
+                (20, shift + 20),
+                f"{rank}.",
                 fill="#1b0f13",
                 font=self.font,
             )
+
+            emoji_text.text(
+                (140, shift + 20),
+                f"{name} 🔸 {distance}",
+                fill="#1b0f13",
+                font=self.font,
+            )
+
+            shift += 62
+        await self.close()
+        return image
 
 
 async def process_image():
@@ -141,12 +171,11 @@ async def process_image():
         },
     ]
     image_url = "https://dgalywyr863hv.cloudfront.net/pictures/athletes/37620439/11064752/4/large.jpg"
-    rounded_image = CreatePosterAthletes(athletes[:1])
-    avatar = await rounded_image._make_circular_avatar(image_url)
-    poster = rounded_image.cap_poster()
-    await rounded_image.poster()
+    rounded_image = PosterAthletes(athletes[:2])
+    # avatar = await rounded_image._make_circular_avatar(image_url)
+    poster = await rounded_image.generate_poster(shift=362)
     poster.show()
-    avatar.show()
+    # avatar.show()
 
 
 if __name__ == "__main__":
