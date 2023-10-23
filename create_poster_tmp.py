@@ -11,6 +11,9 @@ import asyncio
 
 from pilmoji import Pilmoji
 
+from main import env
+from parsing import Strava
+
 # Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -72,10 +75,10 @@ class PosterAthletes:
         )  # Return a transparent image on error
 
     async def close(self):
-        # Закрытие клиентской сессии при завершении работы
+        """Closing the client session when shutting down."""
         await self.session.close()
 
-    def _add_logos_and_icons(self, image):
+    def _add_logos_and_icons(self, image: Image.Image) -> None:
         logo = Image.open(
             path.join(self.base_dir, "resources/images/logo.png")
         )
@@ -93,14 +96,24 @@ class PosterAthletes:
         Pilmoji(image).text((538, 240), "🔟\n🔝", font=self.font)
 
     @property
-    def font(self):
+    def font(self) -> ImageFont.FreeTypeFont:
         return ImageFont.truetype(
             path.join(self.base_dir, "resources/fonts/Ubuntu-Regular.ttf"),
             size=30,
         )
 
-    async def generate_poster(self, shift=0):
+    async def generate_poster(self, shift: int = 0) -> Image.Image:
+        """
+        Generate a poster image with athlete information.
 
+        Args:
+            shift (int): Vertical position shift for adding multiple athletes (default is 0).
+
+        Returns:
+            Image.Image: The generated poster image as a PIL Image.
+        """
+
+        self.logger.info("Generating poster started...")
         if shift == 0:
             image = Image.open(
                 path.join(self.base_dir, "resources/images/background_2.png")
@@ -140,6 +153,7 @@ class PosterAthletes:
 
             shift += 62
         await self.close()
+        self.logger.info("Poster complete.")
         return image
 
 
@@ -170,12 +184,14 @@ async def process_image():
             "link": "https://www.strava.com/athletes/37620439",
         },
     ]
-    image_url = "https://dgalywyr863hv.cloudfront.net/pictures/athletes/37620439/11064752/4/large.jpg"
-    rounded_image = PosterAthletes(athletes[:2])
-    # avatar = await rounded_image._make_circular_avatar(image_url)
+    with Strava(email=env.str("EMAIL"), password=env.str("PASSWD")) as strava:
+        rank_in_club = strava.get_this_week_or_last_week_leaders(
+            env.int("CLUB_ID"),
+            True,
+        )
+    rounded_image = PosterAthletes(rank_in_club[:10])
     poster = await rounded_image.generate_poster(shift=362)
     poster.show()
-    # avatar.show()
 
 
 if __name__ == "__main__":
