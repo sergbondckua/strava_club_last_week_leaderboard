@@ -22,14 +22,29 @@ logging.basicConfig(
 
 
 class PosterAthletes:
+    """A class for generating posters with athlete rank information."""
+
+    BASE_DIR = Path(__file__).resolve().parent
+    BACKGROUND_IMAGE_PATH = BASE_DIR / "resources/images/background.png"
+    BACKGROUND_2_IMAGE_PATH = BASE_DIR / "resources/images/background_2.png"
+    CUP_PATH = BASE_DIR / "resources/images/cup.png"
+    LOGO_PATH = BASE_DIR / "resources/images/logo.png"
+    STRAVA_PATH = BASE_DIR / "resources/images/strava.png"
+    AVATAR_SMALL_SIZE = 60
+    AVATAR_LARGE_SIZE = 124
+    AVATAR_SMALL_POSITION_X = 60
+    AVATARS_TOP3_POSITIONS = ((258, 28), (130, 55), (385, 60))
+    FONT_SIZE = 30
+    NAME_POSITION_X = 140
+    NAME_POSITION_Y = 20
+    RANK_POSITION_X = 20
+    RANK_POSITION_Y = 20
+
     def __init__(self, athletes: list[dict]):
         self.logger = logging.getLogger(__name__)
         self.athletes = athletes
-        self.base_dir = Path(__file__).resolve().parent
-        self.image = Image.open(
-            path.join(self.base_dir, "resources/images/background.png")
-        )
-        # Создаем клиентскую сессию и TCPConnector в конструкторе
+
+        # Create a client session and TCPConnector in the constructor
         self.ssl_context = ssl.create_default_context(cafile=certifi.where())
         self.connector = aiohttp.TCPConnector(ssl=self.ssl_context)
         self.session = aiohttp.ClientSession(connector=self.connector)
@@ -37,7 +52,7 @@ class PosterAthletes:
     async def _load_user_avatar(self, avatar_url: str) -> Image.Image | None:
         try:
             async with self.session.get(avatar_url) as response:
-                response.raise_for_status()  # Проверка на успешный статус ответа
+                response.raise_for_status()  # Checking for successful response status
                 image_bytes = await response.read()
                 return Image.open(BytesIO(image_bytes))
         except aiohttp.ClientError as e:
@@ -79,15 +94,10 @@ class PosterAthletes:
         await self.session.close()
 
     def _add_logos_and_icons(self, image: Image.Image) -> None:
-        logo = Image.open(
-            path.join(self.base_dir, "resources/images/logo.png")
-        )
-        strava = Image.open(
-            path.join(self.base_dir, "resources/images/strava.png")
-        )
-        cup = Image.open(path.join(self.base_dir, "resources/images/cup.png"))
+        logo = Image.open(self.LOGO_PATH)
+        strava = Image.open(self.STRAVA_PATH)
+        cup = Image.open(self.CUP_PATH)
 
-        # Add icons and logos
         image.paste(cup, (130, 150), cup)
         image.paste(logo, (5, 5), logo)
         image.paste(strava, (538, 0), strava)
@@ -97,9 +107,15 @@ class PosterAthletes:
 
     @property
     def font(self) -> ImageFont.FreeTypeFont:
+        """
+        Get the font for text in the poster.
+
+        Returns:
+            ImageFont.FreeTypeFont: The PIL ImageFont instance.
+        """
         return ImageFont.truetype(
-            path.join(self.base_dir, "resources/fonts/Ubuntu-Regular.ttf"),
-            size=30,
+            path.join(self.BASE_DIR, "resources/fonts/Ubuntu-Regular.ttf"),
+            size=self.FONT_SIZE,
         )
 
     async def generate_poster(self, shift: int = 0) -> Image.Image:
@@ -115,75 +131,64 @@ class PosterAthletes:
 
         self.logger.info("Generating poster started...")
         if shift == 0:
-            image = Image.open(
-                path.join(self.base_dir, "resources/images/background_2.png")
-            )
+            poster = Image.open(self.BACKGROUND_2_IMAGE_PATH)
         else:
-            image = self.image
-            self._add_logos_and_icons(image)
+            poster = Image.open(self.BACKGROUND_IMAGE_PATH)
+            self._add_logos_and_icons(poster)
 
-        emoji_text = Pilmoji(image)
+        emoji_text = Pilmoji(poster)
 
         for athlete in self.athletes:
             rank = athlete["rank"]
             name = athlete["athlete_name"]
             distance = athlete["distance"]
             avatar_url = athlete["avatar_large"]
-            avatar_image = await self._make_circular_avatar(
-                avatar_url,
-                size=60,
+            avatar_small = await self._make_circular_avatar(
+                avatar_url=avatar_url,
+                size=self.AVATAR_SMALL_SIZE,
             )
 
-            image.paste(avatar_image, (60, shift), avatar_image)
+            if int(rank) in range(1, 4):
+                avatar_top_3 = await self._make_circular_avatar(
+                    avatar_url=avatar_url,
+                    size=self.AVATAR_LARGE_SIZE,
+                )
+                poster.paste(
+                    avatar_top_3,
+                    self.AVATARS_TOP3_POSITIONS[int(rank) - 1],
+                    avatar_top_3,
+                )
+
+            poster.paste(
+                avatar_small,
+                (self.AVATAR_SMALL_POSITION_X, shift),
+                avatar_small,
+            )
 
             # Drawing text on an image
             emoji_text.text(
-                (20, shift + 20),
+                (self.RANK_POSITION_X, self.RANK_POSITION_Y + shift),
                 f"{rank}.",
                 fill="#1b0f13",
                 font=self.font,
             )
 
             emoji_text.text(
-                (140, shift + 20),
+                (self.NAME_POSITION_X, self.NAME_POSITION_Y + shift),
                 f"{name} 🔸 {distance}",
                 fill="#1b0f13",
                 font=self.font,
             )
 
             shift += 62
+
         await self.close()
         self.logger.info("Poster complete.")
-        return image
+
+        return poster
 
 
 async def process_image():
-    athletes = [
-        {
-            "rank": "1",
-            "athlete_name": "Влад Орлов",
-            "distance": "90.2 km",
-            "activities": "11",
-            "longest": "16.0 km",
-            "avg_pace": "5:50 /km",
-            "elev_gain": "1,095 m",
-            "avatar_large": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/80735219/25672890/6/large.jpg",
-            "avatar_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/80735219/25672890/6/medium.jpg",
-            "link": "https://www.strava.com/athletes/80735219",
-        },
-        {
-            "rank": "2",
-            "athlete_name": "Евгений Степко",
-            "distance": "81.0 km",
-            "activities": "5",
-            "longest": "19.4 km",
-            "avg_pace": "4:53 /km",
-            "elev_gain": "241 m",
-            "avatar_large": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/37620439/11064752/4/large.jpg",
-            "avatar_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/37620439/11064752/4/medium.jpg",
-            "link": "https://www.strava.com/athletes/37620439",
-        },
-    ]
     with Strava(email=env.str("EMAIL"), password=env.str("PASSWD")) as strava:
         rank_in_club = strava.get_this_week_or_last_week_leaders(
             env.int("CLUB_ID"),
