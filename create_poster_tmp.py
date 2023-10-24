@@ -25,11 +25,12 @@ class PosterAthletes:
     """A class for generating posters with athlete rank information."""
 
     BASE_DIR = Path(__file__).resolve().parent
-    BACKGROUND_IMAGE_PATH = BASE_DIR / "resources/images/background.png"
-    BACKGROUND_2_IMAGE_PATH = BASE_DIR / "resources/images/background_2.png"
-    CUP_PATH = BASE_DIR / "resources/images/cup.png"
-    LOGO_PATH = BASE_DIR / "resources/images/logo.png"
-    STRAVA_PATH = BASE_DIR / "resources/images/strava.png"
+    RESOURCES_DIR = BASE_DIR / "resources"
+    BACKGROUND_IMAGE_PATH = RESOURCES_DIR / "images/background.png"
+    BACKGROUND_2_IMAGE_PATH = RESOURCES_DIR / "images/background_2.png"
+    CUP_PATH = RESOURCES_DIR / "images/cup.png"
+    LOGO_PATH = RESOURCES_DIR / "images/logo.png"
+    STRAVA_PATH = RESOURCES_DIR / "images/strava.png"
     AVATAR_SMALL_SIZE = 60
     AVATAR_LARGE_SIZE = 124
     AVATAR_SMALL_POSITION_X = 60
@@ -43,15 +44,18 @@ class PosterAthletes:
     def __init__(self, athletes: list[dict]):
         self.logger = logging.getLogger(__name__)
         self.athletes = athletes
+        self.session = None
 
-        # Create a client session and TCPConnector in the constructor
-        self.ssl_context = ssl.create_default_context(cafile=certifi.where())
-        self.connector = aiohttp.TCPConnector(ssl=self.ssl_context)
-        self.session = aiohttp.ClientSession(connector=self.connector)
+    def _get_session(self):
+        if self.session is None:
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+            self.session = aiohttp.ClientSession(connector=connector)
+        return self.session
 
     async def _load_user_avatar(self, avatar_url: str) -> Image.Image | None:
         try:
-            async with self.session.get(avatar_url) as response:
+            async with self._get_session().get(avatar_url) as response:
                 response.raise_for_status()  # Checking for successful response status
                 image_bytes = await response.read()
                 return Image.open(BytesIO(image_bytes))
