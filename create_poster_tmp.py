@@ -31,6 +31,7 @@ class PosterAthletes:
     CUP_PATH = RESOURCES_DIR / "images/cup.png"
     LOGO_PATH = RESOURCES_DIR / "images/logo.png"
     STRAVA_PATH = RESOURCES_DIR / "images/strava.png"
+    HEAD_ICONS_POSITION_Y = 362
     AVATAR_SMALL_SIZE = 60
     AVATAR_LARGE_SIZE = 124
     AVATAR_SMALL_POSITION_X = 60
@@ -41,10 +42,16 @@ class PosterAthletes:
     RANK_POSITION_X = 20
     RANK_POSITION_Y = 20
 
-    def __init__(self, athletes: list[dict]):
+    def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.athletes = athletes
+        # self.athletes = athletes
         self.session = None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
 
     def _get_session(self):
         if self.session is None:
@@ -122,27 +129,25 @@ class PosterAthletes:
             size=self.FONT_SIZE,
         )
 
-    async def generate_poster(self, shift: int = 0) -> Image.Image:
+    async def generate_poster(
+        self, athletes: list[dict], head_icons: bool = False
+    ) -> Image.Image:
         """
         Generate a poster image with athlete information.
-
-        Args:
-            shift (int): Vertical position shift for adding multiple athletes (default is 0).
-
-        Returns:
-            Image.Image: The generated poster image as a PIL Image.
         """
 
         self.logger.info("Generating poster started...")
-        if shift == 0:
+        if not head_icons:
+            shift = 5
             poster = Image.open(self.BACKGROUND_2_IMAGE_PATH)
         else:
+            shift = self.HEAD_ICONS_POSITION_Y
             poster = Image.open(self.BACKGROUND_IMAGE_PATH)
             self._add_logos_and_icons(poster)
 
         emoji_text = Pilmoji(poster)
 
-        for athlete in self.athletes:
+        for athlete in athletes:
             rank = athlete["rank"]
             name = athlete["athlete_name"]
             distance = athlete["distance"]
@@ -152,7 +157,7 @@ class PosterAthletes:
                 size=self.AVATAR_SMALL_SIZE,
             )
 
-            if int(rank) in range(1, 4):
+            if head_icons and int(rank) in range(1, 4):
                 avatar_top_3 = await self._make_circular_avatar(
                     avatar_url=avatar_url,
                     size=self.AVATAR_LARGE_SIZE,
@@ -186,7 +191,7 @@ class PosterAthletes:
 
             shift += 62
 
-        await self.close()
+        # await self.close()
         self.logger.info("Poster complete.")
 
         return poster
@@ -194,13 +199,22 @@ class PosterAthletes:
 
 async def process_image():
     with Strava(email=env.str("EMAIL"), password=env.str("PASSWD")) as strava:
-        rank_in_club = strava.get_this_week_or_last_week_leaders(
+        athletes_rank = strava.get_this_week_or_last_week_leaders(
             env.int("CLUB_ID"),
-            True,
+            last_week=True,
         )
-    rounded_image = PosterAthletes(rank_in_club[:10])
-    poster = await rounded_image.generate_poster(shift=362)
-    poster.show()
+
+    async with PosterAthletes() as pa:
+        top_10 = athletes_rank[:10]
+        remainder = athletes_rank[10:]
+        groups = [top_10] + [
+            remainder[i:i + 15] for i in range(0, len(remainder), 15)
+        ]
+
+        for num, group in enumerate(groups):
+            head_icons = True if num == 0 else False
+            poster = await pa.generate_poster(group, head_icons)
+            poster.show()
 
 
 if __name__ == "__main__":
