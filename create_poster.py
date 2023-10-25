@@ -1,10 +1,15 @@
 import logging
+import ssl
 from os import path
 from pathlib import Path
-
-import requests
-from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
+import aiohttp
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 from pilmoji import Pilmoji
+import certifi
+from main import env
+from parsing import Strava
+
 
 # Enable logging
 logging.basicConfig(
@@ -13,90 +18,143 @@ logging.basicConfig(
 )
 
 
-class AthletesPoster:
-    """Create poster"""
-
-    def __init__(self, athletes):
+class PosterAthletes:
+    def __init__(self, athletes: list[dict], image_generator, avatar_loader):
         self.logger = logging.getLogger(__name__)
-        self.base_dir = Path(__file__).resolve().parent
         self.athletes = athletes
-        self.image = Image.open(
-            path.join(self.base_dir, "resources/images/background.png")
-        )
-        self.font = ImageFont.truetype(
-            path.join(self.base_dir, "resources/fonts/Ubuntu-Regular.ttf"),
-            size=30,
-        )
-        self.draw = ImageDraw.Draw(self.image)
-        self.emoji_text = Pilmoji(self.image)
-        self.x = 20
-        self.y = 362
+        self.image_generator = image_generator
+        self.avatar_loader = avatar_loader
+        self.session = None
 
-    def create_head_poster(self, filename):
-        logo = Image.open(
-            path.join(self.base_dir, "resources/images/logo.png")
-        )
-        strava = Image.open(
-            path.join(self.base_dir, "resources/images/strava.png")
-        )
-        cup = Image.open(path.join(self.base_dir, "resources/images/cup.png"))
+    def generate_poster(self, shift: int = 0):
+        self.logger.info("Generating poster started...")
+        if shift == 0:
+            poster = self.image_generator.open_background_image_2()
+        else:
+            poster = self.image_generator.open_background_image()
+            self.image_generator.add_logos_and_icons(poster)
 
-        # Icons on the "out" background
-        self.image.paste(cup, (130, 150), cup)
-        self.image.paste(logo, (5, 5), logo)
-        self.image.paste(strava, (538, 0), strava)
-
-        self.emoji_text.text((538, 240), "🔟\n🔝", font=self.font)
+        emoji_text = Pilmoji(poster)
 
         for athlete in self.athletes:
             rank = athlete["rank"]
             name = athlete["athlete_name"]
             distance = athlete["distance"]
             avatar_url = athlete["avatar_large"]
-            avatar_image = Image.open(
-                requests.get(avatar_url, stream=True, timeout=5).raw
+            avatar_small = self.avatar_loader.make_circular_avatar(
+                avatar_url=avatar_url,
+                size=self.avatar_loader.AVATAR_SMALL_SIZE,
             )
-            self.image.paste(avatar_image, (self.x, self.y))
 
-            # Рисуем текст на изображении
-            self.emoji_text.text(
-                (self.x, self.y),
-                f"{rank} {name} {distance}",
+            if int(rank) in range(1, 4):
+                avatar_top_3 = self.avatar_loader.make_circular_avatar(
+                    avatar_url=avatar_url,
+                    size=self.avatar_loader.AVATAR_LARGE_SIZE,
+                )
+                poster.paste(
+                    avatar_top_3,
+                    self.avatar_loader.AVATARS_TOP3_POSITIONS[int(rank) - 1],
+                    avatar_top_3,
+                )
+
+            poster.paste(
+                avatar_small,
+                (self.avatar_loader.AVATAR_SMALL_POSITION_X, shift),
+                avatar_small,
+            )
+
+            emoji_text.text(
+                (
+                    self.avatar_loader.RANK_POSITION_X,
+                    self.avatar_loader.RANK_POSITION_Y + shift,
+                ),
+                f"{rank}.",
                 fill="#1b0f13",
-                font=self.font,
+                font=self.avatar_loader.font,
             )
 
-        self.image.save(filename)
+            emoji_text.text(
+                (
+                    self.avatar_loader.NAME_POSITION_X,
+                    self.avatar_loader.ROW_POSITION_Y + shift,
+                ),
+                f"{name} 🔸 {distance}",
+                fill="#1b0f13",
+                font=self.avatar_loader.font,
+            )
+
+            shift += 62
+
+        self.avatar_loader.close()
+        self.logger.info("Poster complete.")
+        return poster
 
 
-if __name__ == "__main__":
-    athletes_data = [
-        {
-            "rank": "1",
-            "athlete_name": "Евгений Степко",
-            "distance": "108.3 km",
-            "activities": "6",
-            "longest": "25.4 km",
-            "avg_pace": "5:07 /km",
-            "elev_gain": "430 m",
-            "avatar_large": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/37620439/11064752/4/large.jpg",
-            "avatar_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/37620439/11064752/4/medium.jpg",
-            "link": "https://www.strava.com/athletes/37620439",
-        },
-        {
-            "rank": "2",
-            "athlete_name": "Андрій Прядко",
-            "distance": "104.4 km",
-            "activities": "6",
-            "longest": "59.0 km",
-            "avg_pace": "10:36 /km",
-            "elev_gain": "4,341 m",
-            "avatar_large": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/44626735/12516485/22/large.jpg",
-            "avatar_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/44626735/12516485/22/medium.jpg",
-            "link": "https://www.strava.com/athletes/44626735",
-        },
-    ]  # Вставьте сюда данные атлетов
-    output_filename = "athletes.png"
-    athlete_image = AthletesPoster(athletes_data[:1])
-    athlete_image.create_round_image_with_border().show()
-    # athlete_image.create_head_poster(output_filename)
+class ImageGenerator:
+    def __init__(self, resources_dir):
+        self.resources_dir = resources_dir
+
+    def open_background_image_2(self):
+        return Image.open(self.resources_dir / "images/background_2.png")
+
+    def open_background_image(self):
+        return Image.open(self.resources_dir / "images/background.png")
+
+    def add_logos_and_icons(self, image):
+        logo = Image.open(self.resources_dir / "images/logo.png")
+        strava = Image.open(self.resources_dir / "images/strava.png")
+        cup = Image.open(self.resources_dir / "images/cup.png")
+
+        image.paste(cup, (130, 150), cup)
+        image.paste(logo, (5, 5), logo)
+        image.paste(strava, (538, 0), strava)
+
+        Pilmoji(image).text((538, 240), "🔟\n🔝", font=self.font)
+
+
+class AvatarLoader:
+    def __init__(self, session, font, avatars_positions):
+        self.session = session
+        self.font = font
+        self.AVATARS_TOP3_POSITIONS = avatars_positions
+
+    async def _load_user_avatar(self, avatar_url: str) -> Image.Image | None:
+        try:
+            async with self.session.get(avatar_url) as response:
+                response.raise_for_status()
+                image_bytes = await response.read()
+                return Image.open(BytesIO(image_bytes))
+        except aiohttp.ClientError as e:
+            self.logger.error("Error loading avatar: %s", e)
+            return None
+
+    async def make_circular_avatar(
+        self,
+        avatar_url: str,
+        border_color: str = "#fff",
+        border_width: int = 1,
+        size=None,
+    ) -> Image.Image:
+        source_img = await self._load_user_avatar(avatar_url)
+
+        if source_img is not None:
+            avatar = source_img.resize((size, size)) if size else source_img
+            size = min(avatar.size)
+            mask = Image.new("L", (size, size), 0)
+            draw = ImageDraw.Draw(mask)
+            draw.ellipse((0, 0, size, size), fill=255)
+
+            avatar = avatar.crop((0, 0, size, size))
+            avatar.putalpha(mask)
+
+            draw = ImageDraw.Draw(avatar)
+            draw.ellipse(
+                (0, 0, size, size), outline=border_color, width=border_width
+            )
+
+            return avatar
+        self.logger.error("Image not found: url=%s incorrect")
+        return Image.new("RGBA", (16, 16), (255, 255, 255, 0))
+
+    async def close(self):
+        await self.session.close()

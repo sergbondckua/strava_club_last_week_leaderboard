@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 import logging
 import ssl
 from os import path
 from pathlib import Path
 
+import asyncio
+from io import BytesIO
 import certifi
 from PIL import Image, ImageDraw, ImageFont
-from io import BytesIO
+
 import aiohttp
-import asyncio
+
 
 from pilmoji import Pilmoji
 
@@ -36,15 +40,14 @@ class PosterAthletes:
     AVATAR_LARGE_SIZE = 124
     AVATAR_SMALL_POSITION_X = 60
     AVATARS_TOP3_POSITIONS = ((258, 28), (130, 55), (385, 60))
+    DISTANCE_POSITION_X = 450
     FONT_SIZE = 30
     NAME_POSITION_X = 140
-    NAME_POSITION_Y = 20
+    ROW_POSITION_Y = 20
     RANK_POSITION_X = 20
-    RANK_POSITION_Y = 20
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        # self.athletes = athletes
         self.session = None
 
     async def __aenter__(self):
@@ -138,7 +141,7 @@ class PosterAthletes:
 
         self.logger.info("Generating poster started...")
         if not head_icons:
-            shift = 5
+            shift = 20
             poster = Image.open(self.BACKGROUND_2_IMAGE_PATH)
         else:
             shift = self.HEAD_ICONS_POSITION_Y
@@ -149,7 +152,10 @@ class PosterAthletes:
 
         for athlete in athletes:
             rank = athlete["rank"]
-            name = athlete["athlete_name"]
+            long_name = athlete["athlete_name"]
+            name = (
+                long_name if len(long_name) <= 18 else f"{long_name[:16]}..."
+            )
             distance = athlete["distance"]
             avatar_url = athlete["avatar_large"]
             avatar_small = await self._make_circular_avatar(
@@ -176,25 +182,58 @@ class PosterAthletes:
 
             # Drawing text on an image
             emoji_text.text(
-                (self.RANK_POSITION_X, self.RANK_POSITION_Y + shift),
-                f"{rank}.",
+                (self.RANK_POSITION_X, self.ROW_POSITION_Y + shift),
+                text=f"{rank}.",
                 fill="#1b0f13",
                 font=self.font,
             )
 
             emoji_text.text(
-                (self.NAME_POSITION_X, self.NAME_POSITION_Y + shift),
-                f"{name} 🔸 {distance}",
+                (self.NAME_POSITION_X, self.ROW_POSITION_Y + shift),
+                text=name,
+                fill="#1b0f13",
+                font=self.font,
+            )
+
+            emoji_text.text(
+                (self.DISTANCE_POSITION_X, self.ROW_POSITION_Y + shift),
+                text=f"🔸 {distance}",
                 fill="#1b0f13",
                 font=self.font,
             )
 
             shift += 62
 
-        # await self.close()
         self.logger.info("Poster complete.")
-
         return poster
+
+
+class PosterSaver:
+    """Save poster to disk."""
+
+    OUTPUT_FOLDER = "out_posters"
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.output_dir = Path(self.OUTPUT_FOLDER)
+
+    async def save_poster(self, poster: Image.Image, filename: str):
+        """
+        Save the generated poster image to a file.
+        """
+
+        output_file = self.output_dir / filename
+        with output_file.open("wb") as f:
+            poster.save(f, "PNG")
+        poster.close()  # Explicitly close the image
+
+    async def clear_output_folder(self):
+        """Clear the folder."""
+        folder_path = self.output_dir.resolve()
+        for file in folder_path.glob("*"):
+            if file.is_file():
+                file.unlink()
+        self.logger.info("The folder has been cleared.")
 
 
 async def process_image():
@@ -207,14 +246,16 @@ async def process_image():
     async with PosterAthletes() as pa:
         top_10 = athletes_rank[:10]
         remainder = athletes_rank[10:]
-        groups = [top_10] + [
-            remainder[i:i + 15] for i in range(0, len(remainder), 15)
-        ]
+        tag = len(remainder) - (len(remainder) % 15)
+        groups = [top_10] + [remainder[i : i + 15] for i in range(0, tag, 15)]
+        poster_saver = PosterSaver()
+        await poster_saver.clear_output_folder()
 
         for num, group in enumerate(groups):
-            head_icons = True if num == 0 else False
+            head_icons = num == 0
+            filename = f"out{num + 1}.png"
             poster = await pa.generate_poster(group, head_icons)
-            poster.show()
+            await poster_saver.save_poster(poster, filename)
 
 
 if __name__ == "__main__":
