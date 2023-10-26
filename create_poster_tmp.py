@@ -100,7 +100,7 @@ class PosterAthletes:
             return avatar
         self.logger.error("Image not found: url=%s incorrect", avatar_url)
         return Image.new(
-            "RGBA", (16, 16), (255, 255, 255, 0)
+            "RGBA", (60, 60), (255, 255, 255, 0)
         )  # Return a transparent image on error
 
     async def close(self):
