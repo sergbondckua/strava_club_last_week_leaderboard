@@ -236,6 +236,10 @@ class PosterSaver:
         self.logger.info("The folder has been cleared.")
 
 
+class SetFont:
+    """Set the font."""
+
+
 async def process_image():
     with Strava(email=env.str("EMAIL"), password=env.str("PASSWD")) as strava:
         athletes_rank = strava.get_this_week_or_last_week_leaders(
