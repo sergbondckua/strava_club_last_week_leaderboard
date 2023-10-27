@@ -236,7 +236,7 @@ class PosterSaver:
         self.logger.info("The folder has been cleared.")
 
 
-class SetFont:
+class FontManager:
     """Set the font."""
 
 
