@@ -6,7 +6,6 @@ import ssl
 from os import path
 from pathlib import Path
 
-import asyncio
 from io import BytesIO
 import certifi
 from PIL import Image, ImageDraw, ImageFont
