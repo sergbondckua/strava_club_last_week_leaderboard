@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import ssl
 from os import path
 from pathlib import Path
@@ -11,7 +12,7 @@ import certifi
 from PIL import Image, ImageDraw, ImageFont
 
 import aiohttp
-
+from fontTools.ttLib import TTFont
 
 from pilmoji import Pilmoji
 
@@ -185,21 +186,21 @@ class PosterAthletes:
                 (self.RANK_POSITION_X, self.ROW_POSITION_Y + shift),
                 text=f"{rank}.",
                 fill="#1b0f13",
-                font=self.font,
+                font=FontManager().font,
             )
 
             emoji_text.text(
                 (self.NAME_POSITION_X, self.ROW_POSITION_Y + shift),
                 text=name,
                 fill="#1b0f13",
-                font=self.font,
+                font=await FontManager().set_font(re.search(r"\w", name).group(0)),
             )
 
             emoji_text.text(
                 (self.DISTANCE_POSITION_X, self.ROW_POSITION_Y + shift),
                 text=f"🔸 {distance}",
                 fill="#1b0f13",
-                font=self.font,
+                font=FontManager().font,
             )
 
             shift += 62
@@ -239,6 +240,58 @@ class PosterSaver:
 class FontManager:
     """Set the font."""
 
+    FONT_DIR = Path(__file__).resolve().parent / "resources/fonts"
+    DEFAULT_FONT = path.join(FONT_DIR, "Ubuntu-Regular.ttf")
+    FONT_SIZE = 30
+
+    async def set_font(self, symbol: str):
+        """Set the font to a given symbol"""
+
+        symbol_unicode = ord(symbol)
+        ttf = TTFont(self.DEFAULT_FONT)
+
+        if self.is_symbol_in_font(symbol_unicode, ttf):
+            return ImageFont.truetype(self.DEFAULT_FONT, size=self.FONT_SIZE)
+
+        fonts_list = self.get_font_list()
+
+        for font in fonts_list:
+            ttf = TTFont(path.join(self.FONT_DIR, font))
+
+            if self.is_symbol_in_font(symbol_unicode, ttf):
+                print(font, "YES")  # TODO: this removes
+                return ImageFont.truetype(
+                    path.join(self.FONT_DIR, font),
+                    size=self.FONT_SIZE,
+                )
+
+        return self.DEFAULT_FONT
+
+    @staticmethod
+    def is_symbol_in_font(symbol_unicode, font):
+        return any(
+            char_map.isUnicode() and symbol_unicode in char_map.cmap
+            for char_map in font["cmap"].tables
+        )
+
+    def get_font_list(self):
+        fonts_list = []
+        font_dir = Path(self.FONT_DIR).resolve()
+        for file in font_dir.glob("*"):
+            if file.is_file():
+                fonts_list.append(file)
+        return sorted(fonts_list)
+
+    @property
+    def font(self) -> ImageFont.FreeTypeFont:
+        """
+        Get the font for text in the poster.
+
+        Returns:
+            ImageFont.FreeTypeFont: The PIL ImageFont instance.
+        """
+        return ImageFont.truetype(self.DEFAULT_FONT, size=self.FONT_SIZE)
+
 
 async def process_image():
     with Strava(email=env.str("EMAIL"), password=env.str("PASSWD")) as strava:
@@ -260,6 +313,13 @@ async def process_image():
             filename = f"out{num + 1}.png"
             poster = await pa.generate_poster(group, head_icons)
             await poster_saver.save_poster(poster, filename)
+
+    font = path.join(
+        Path(__file__).resolve().parent,
+        "resources/fonts/Ubuntu-Regular.ttf",
+    )
+    fm = FontManager()
+    await fm.set_font("𝑫")
 
 
 if __name__ == "__main__":
