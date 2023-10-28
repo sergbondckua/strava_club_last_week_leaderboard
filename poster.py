@@ -42,14 +42,14 @@ class Poster:
 
     @staticmethod
     def char_in_font(unicode_char: str, font: TTFont) -> bool:
-        """Checks if the font supports a character in a string. Returns True if not supported."""
+        """Checks if the font_manager supports a character in a string. Returns True if not supported."""
         return all(
             not cmap.isUnicode() or ord(unicode_char) not in cmap.cmap
             for cmap in font["cmap"].tables
         )
 
     def set_font(self, symbol: str, default_font: TTFont):
-        """Set the font to a given symbol"""
+        """Set the font_manager to a given symbol"""
         for char_map in default_font["cmap"].tables:
             if char_map.isUnicode() and ord(symbol) in char_map.cmap:
                 return self.font
@@ -115,11 +115,11 @@ class Poster:
                 TTFont(self.__ubuntu_font),
             )
             # If the characters in the name (string) of the athlete are not
-            # supported by the font, we replace it with a font that can do this
+            # supported by the font_manager, we replace it with a font_manager that can do this
             # if self.char_in_font(
             #         re.search(r"\w", sportsmen.get("athlete_name")).group(0),
             #         TTFont(self.__ubuntu_font)):
-            #     font = ImageFont.truetype(self.__symbol_font, size=26)
+            #     font_manager = ImageFont.truetype(self.__symbol_font, size=26)
 
             # Resize the athlete's avatar to the desired size
             with urlopen(
