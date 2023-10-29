@@ -1,11 +1,9 @@
 """Data Parser in Strava Club"""
 
 import pickle
-import logging
-import time
 from os import path, remove
 from pathlib import Path
-from pprint import pprint
+
 
 import requests
 
@@ -21,11 +19,7 @@ from selenium.common.exceptions import (
     WebDriverException,
 )
 
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
+import config
 
 
 class NotClosedException(Exception):
@@ -45,7 +39,7 @@ class Strava:
     def __init__(self, email=None, password=None):
         self.email = email
         self.password = password
-        self.logger = logging.getLogger(__name__)
+        self.logger = config.logger
         self.options = self._configure_driver_options()
         self.service = webdriver.ChromeService()
         self.browser = None

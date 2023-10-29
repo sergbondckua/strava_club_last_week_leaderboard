@@ -1,19 +1,10 @@
-import logging
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from aiogram import Bot, types
-from environs import Env
 
-# Read environment variables
-env = Env()
-env.read_env()
-
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
+import config
 
 
 class PosterAlbumSender:
@@ -22,10 +13,10 @@ class PosterAlbumSender:
     """
 
     IMAGE_PATH = os.path.join(Path(__file__).resolve().parent, "out_posters")
-    CLUB_ID = env.str("CLUB_ID")
+    CLUB_ID = config.env.str("CLUB_ID")
 
     def __init__(self, bot_token: str):
-        self.logger = logging.getLogger(__name__)
+        self.logger = config.logger
         self.bot = Bot(bot_token, parse_mode=types.ParseMode.HTML)
 
     def get_image_files(self) -> list[str]:
@@ -40,6 +31,8 @@ class PosterAlbumSender:
 
         return image_files
 
+
+class TelegramSender(PosterAlbumSender):
     @property
     def get_caption(self) -> str:
         strava_club_id = self.CLUB_ID
@@ -63,16 +56,15 @@ class PosterAlbumSender:
 
         return caption
 
-    def get_media_group(self) -> types.MediaGroup:
+    async def get_media_group(self) -> types.MediaGroup:
         """
         Creates and returns a MediaGroup object based on images located in the specified folder.
         """
 
-        image_files = self.get_image_files()
+        image_files = sorted(self.get_image_files())
         media_group = types.MediaGroup()
 
         for num, image_file in enumerate(image_files):
-            print(image_file)
             image_input = types.InputFile(
                 os.path.join(self.IMAGE_PATH, image_file)
             )
@@ -91,18 +83,20 @@ class PosterAlbumSender:
     async def send_album_to_telegram(self, chat_id):
         """Send an album of images to a Telegram chat."""
 
-        self.logger.info("Sending to Telegram channel %s...", chat_id)
+        self.logger.info("Sending to Telegram channel %s ...", chat_id)
+        session = await self.bot.get_session()
         await self.bot.send_chat_action(
             chat_id=chat_id, action=types.ChatActions.UPLOAD_PHOTO
         )
-        media = self.get_media_group()
+        media = await self.get_media_group()
         await self.bot.send_media_group(chat_id=chat_id, media=media)
+        await session.close()
         self.logger.info("Album have been sent successfully.")
 
 
 async def main():
-    sender = PosterAlbumSender(bot_token=env.str("BOT_TOKEN"))
-    await sender.send_album_to_telegram(env.str("CHAT_ID"))
+    sender = TelegramSender(bot_token=config.env.str("BOT_TOKEN"))
+    await sender.send_album_to_telegram(config.env.str("CHAT_ID"))
 
 
 if __name__ == "__main__":

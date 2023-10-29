@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import re
 import ssl
 from os import path
@@ -15,11 +14,7 @@ from fontTools.ttLib import TTFont
 
 from pilmoji import Pilmoji
 
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
+import config
 
 
 class PosterAthletes:
@@ -43,9 +38,10 @@ class PosterAthletes:
     RANK_POSITION_X = 20
 
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        self.logger = config.logger
         self.session = None
         self.font_utils = FontManager()
+        self.method_calls = 0
 
     async def __aenter__(self):
         return self
@@ -123,7 +119,8 @@ class PosterAthletes:
         Generate a poster image with athlete information.
         """
 
-        self.logger.info("Generating poster started...")
+        self.method_calls += 1
+        self.logger.info("Generating poster #%s started...", self.method_calls)
         if not head_icons:
             shift = 20
             poster = Image.open(self.BACKGROUND_2_IMAGE_PATH)
@@ -190,7 +187,7 @@ class PosterAthletes:
 
             shift += 62
 
-        self.logger.info("Poster complete.")
+        self.logger.info("Poster #%s complete.", self.method_calls)
         return poster
 
 
@@ -200,7 +197,7 @@ class PosterSaver:
     OUTPUT_FOLDER = "out_posters"
 
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        self.logger = config.logger
         self.output_dir = Path(self.OUTPUT_FOLDER)
 
     async def save_poster(self, poster: Image.Image, filename: str):
@@ -256,7 +253,7 @@ class FontManager:
         """
         Checks if a Unicode symbol exists in the specified font.
 
-        :param symbol_unicode: The Unicode symbol as a ord().
+        :param symbol_unicode: The Unicode symbol as ord().
         :param font: The TTFont object representing the font.
         :return: True if the symbol exists in the font, otherwise False.
         """

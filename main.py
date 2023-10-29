@@ -1,23 +1,19 @@
 import asyncio
 
-from environs import Env
-
+import config
 from create_poster import PosterAthletes, PosterSaver
 from parsing import Strava
-from sender_new import PosterAlbumSender
-
-
-# Read environment variables
-env = Env()
-env.read_env()
+from sender_new import TelegramSender
 
 
 async def main():
     """Main function"""
 
-    with Strava(email=env.str("EMAIL"), password=env.str("PASSWD")) as strava:
+    with Strava(
+        email=config.env.str("EMAIL"), password=config.env.str("PASSWD")
+    ) as strava:
         athletes_rank = strava.get_this_week_or_last_week_leaders(
-            env.int("CLUB_ID"),
+            config.env.int("CLUB_ID"),
             last_week=True,
         )
 
@@ -36,8 +32,8 @@ async def main():
             await poster_saver.save_poster(poster, filename)
 
     # Sending posters via Telegram
-    send = PosterAlbumSender(bot_token=env.str("BOT_TOKEN"))
-    await send.send_album_to_telegram(env.int("CHAT_ID"))
+    send = TelegramSender(bot_token=config.env.str("BOT_TOKEN"))
+    await send.send_album_to_telegram(config.env.int("CHAT_ID"))
 
 
 if __name__ == "__main__":
