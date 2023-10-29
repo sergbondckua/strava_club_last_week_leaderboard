@@ -4,9 +4,8 @@ from environs import Env
 
 from create_poster import PosterAthletes, PosterSaver
 from parsing import Strava
+from sender_new import PosterAlbumSender
 
-
-# from sender import SenderTelegram
 
 # Read environment variables
 env = Env()
@@ -24,7 +23,7 @@ async def main():
 
     async with PosterAthletes() as pa:
         top_10 = athletes_rank[:10]
-        remainder = athletes_rank[10:25]
+        remainder = athletes_rank[10:40]
         tag = len(remainder) - (len(remainder) % 15)
         groups = [top_10] + [remainder[i : i + 15] for i in range(0, tag, 15)]
         poster_saver = PosterSaver()
@@ -36,11 +35,9 @@ async def main():
             poster = await pa.generate_poster(group, head_icons)
             await poster_saver.save_poster(poster, filename)
 
-    # # Sending posters via Telegram
-    # send = SenderTelegram(token_bot=os.getenv("TOKEN_BOT"))
-    # send.telegram_send(
-    #     os.getenv("CHAT_ID"), language="en", strava_club_id=1028327
-    # )
+    # Sending posters via Telegram
+    send = PosterAlbumSender(bot_token=env.str("BOT_TOKEN"))
+    await send.send_album_to_telegram(env.int("CHAT_ID"))
 
 
 if __name__ == "__main__":
