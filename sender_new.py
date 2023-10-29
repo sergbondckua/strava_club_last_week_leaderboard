@@ -92,16 +92,3 @@ class TelegramSender(PosterAlbumSender):
         await self.bot.send_media_group(chat_id=chat_id, media=media)
         await session.close()
         self.logger.info("Album have been sent successfully.")
-
-
-async def main():
-    sender = TelegramSender(bot_token=config.env.str("BOT_TOKEN"))
-    await sender.send_album_to_telegram(config.env.str("CHAT_ID"))
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
-    loop.close()
