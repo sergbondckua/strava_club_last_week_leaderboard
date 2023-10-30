@@ -120,7 +120,9 @@ class PosterAthletes:
         """
 
         self.method_calls += 1
-        self.logger.info("Generating poster #%s started...", self.method_calls)
+        self.logger.info(
+            "Generation of poster number #%s has begun...", self.method_calls
+        )
         if not head_icons:
             shift = 20
             poster = Image.open(self.BACKGROUND_2_IMAGE_PATH)
@@ -187,7 +189,7 @@ class PosterAthletes:
 
             shift += 62
 
-        self.logger.info("Poster #%s complete.", self.method_calls)
+        self.logger.info("Poster #%s is complete.", self.method_calls)
         return poster
 
 

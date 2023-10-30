@@ -1,5 +1,6 @@
 import logging
 
+from apscheduler.schedulers.blocking import BlockingScheduler
 from environs import Env
 
 # Read environment variables
@@ -12,3 +13,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+
+# Create a scheduler
+scheduler = BlockingScheduler(timezone=env.str("TZ"))

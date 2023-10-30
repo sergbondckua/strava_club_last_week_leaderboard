@@ -1,5 +1,6 @@
 aiogram==2.25.2
 aiohttp==3.8.6
+APScheduler==3.10.1
 certifi==2023.7.22
 environs==9.5.0
 fonttools==4.43.1
@@ -7,9 +8,3 @@ Pillow==10.1.0
 pilmoji==2.0.4
 requests==2.31.0
 selenium==4.14.0
-
-
-
-
-
-
