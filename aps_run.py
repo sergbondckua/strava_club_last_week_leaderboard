@@ -10,11 +10,12 @@ async def start_scheduler() -> None:
         asyncio.run(main())
 
     config.scheduler.add_job(
-        func=run_main,  # Use the wrapper function that awaits 'main'
+        name="leaderboard",
+        func=run_main,
         trigger="cron",
         second=0,
-        minute=28,
-        hour=18,
+        minute=31,
+        hour=22,
         day_of_week="mon",
     )
 
