@@ -3,20 +3,20 @@ import config
 from main import main
 
 
-async def start_scheduler() -> None:
+def start_scheduler() -> None:
     """Start scheduler and add tasks to apscheduler"""
 
     def run_main():
         asyncio.run(main())
 
     config.scheduler.add_job(
-        name="leaderboard",
+        name="leaderboard_start_process",
         func=run_main,
         trigger="cron",
         second=0,
-        minute=31,
-        hour=22,
-        day_of_week="mon",
+        minute=22,
+        hour=15,
+        day_of_week="tue",
     )
 
     # Start the scheduler
@@ -24,4 +24,4 @@ async def start_scheduler() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(start_scheduler())
+    start_scheduler()

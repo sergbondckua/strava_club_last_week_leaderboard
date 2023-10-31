@@ -1,0 +1,12 @@
+version: "3.4"
+
+services:
+  leaderboard_generated:
+    build: .
+    container_name: strava_rating_athletes_club
+    restart: always
+    command: python aps_run.py
+    env_file:
+      - .env
+    volumes:
+      - .:/usr/src/app

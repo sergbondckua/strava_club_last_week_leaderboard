@@ -121,7 +121,7 @@ class PosterAthletes:
 
         self.method_calls += 1
         self.logger.info(
-            "Generation of poster number #%s has begun...", self.method_calls
+            "Generation of poster #%s has begun...", self.method_calls
         )
         if not head_icons:
             shift = 20
