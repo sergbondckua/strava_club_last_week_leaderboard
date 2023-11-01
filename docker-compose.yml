@@ -1,6 +1,14 @@
 version: "3.4"
 
 services:
+  selenium-chrome:
+    image: selenium/standalone-chrome
+    shm_size: 2g
+    networks:
+      custom_network:
+        ipv4_address: 172.0.0.2
+    ports:
+      - "4444:4444"
   leaderboard_generated:
     build: .
     container_name: strava_rating_athletes_club
@@ -10,3 +18,16 @@ services:
       - .env
     volumes:
       - .:/usr/src/app
+    depends_on:
+      - selenium-chrome
+    networks:
+      custom_network:
+        ipv4_address: 172.0.0.3
+
+networks:
+  custom_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.0.0.0/16

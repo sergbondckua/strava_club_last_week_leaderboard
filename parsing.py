@@ -1,5 +1,4 @@
-"""Data Parser in Strava Club"""
-
+import asyncio
 import pickle
 from os import path, remove
 from pathlib import Path
@@ -70,14 +69,23 @@ class Strava:
     def start_driver(self):
         """Start Chrome webdriver."""
 
+        # try:
+        #     self.browser = webdriver.Chrome(
+        #         service=self.service, options=self.options
+        #     )
+        # except:
         try:
-            self.browser = webdriver.Chrome(
-                service=self.service, options=self.options
+            self.browser = webdriver.Remote(
+                command_executor="http://172.0.0.2:4444",
+                options=self.options,
             )
-            return self.browser
-        except WebDriverException as error:
-            self.logger.error("Error starting the web browser: %s", str(error))
-            raise error
+        except WebDriverException as remote_error:
+            self.logger.error(
+                "Error starting the web browser Remote: %s", str(remote_error)
+            )
+            raise remote_error  # Reraise the error from the remote webdriver attempt
+
+        return self.browser
 
     def close_browser(self):
         """Close the web browser."""
@@ -334,3 +342,20 @@ class InfoStravaClub:
         """Get club info"""
         response = requests.get(self.club_url, headers=self.headers, timeout=5)
         return response.json()
+
+
+async def main():
+    """Main function"""
+
+    with Strava(
+        email=config.env.str("EMAIL"), password=config.env.str("PASSWD")
+    ) as strava:
+        athletes_rank = strava.get_this_week_or_last_week_leaders(
+            config.env.int("CLUB_ID"),
+            last_week=True,
+        )
+        print(athletes_rank)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
