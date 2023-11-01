@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 import requests
+import urllib3
 
 # Selenium modules
 from selenium import webdriver
@@ -67,23 +68,29 @@ class Strava:
         return options
 
     def start_driver(self):
-        """Start Chrome webdriver."""
+        """Start the web driver (remote or local)."""
 
-        # try:
-        #     self.browser = webdriver.Chrome(
-        #         service=self.service, options=self.options
-        #     )
-        # except:
+        use_remote = True
+
         try:
             self.browser = webdriver.Remote(
                 command_executor="http://172.0.0.2:4444",
                 options=self.options,
             )
-        except WebDriverException as remote_error:
-            self.logger.error(
-                "Error starting the web browser Remote: %s", str(remote_error)
-            )
-            raise remote_error  # Reraise the error from the remote webdriver attempt
+        except urllib3.exceptions.MaxRetryError:
+            use_remote = False
+
+        if not use_remote:
+            try:
+                self.browser = webdriver.Chrome(
+                    service=self.service,
+                    options=self.options,
+                )
+            except WebDriverException as remote_error:
+                self.logger.error(
+                    "Error starting the web browser: %s", str(remote_error)
+                )
+                raise remote_error
 
         return self.browser
 
