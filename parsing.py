@@ -1,4 +1,5 @@
 import asyncio
+import os
 import pickle
 from os import path, remove
 from pathlib import Path
@@ -70,29 +71,22 @@ class Strava:
     def start_driver(self):
         """Start the web driver (remote or local)."""
 
-        use_remote = True
-
         try:
-            self.browser = webdriver.Remote(
-                command_executor="http://172.0.0.2:4444",
-                options=self.options,
-            )
-        except urllib3.exceptions.MaxRetryError:
-            use_remote = False
-
-        if not use_remote:
-            try:
+            if os.environ.get("DOCKER", False):
+                self.browser = webdriver.Remote(
+                    command_executor="http://172.0.0.2:4444",
+                    options=self.options,
+                )
+            else:
                 self.browser = webdriver.Chrome(
                     service=self.service,
                     options=self.options,
                 )
-            except WebDriverException as remote_error:
-                self.logger.error(
-                    "Error starting the web browser: %s", str(remote_error)
-                )
-                raise remote_error
 
-        return self.browser
+            return self.browser
+        except WebDriverException as error:
+            self.logger.error("Error starting the web browser: %s", str(error))
+            raise error
 
     def close_browser(self):
         """Close the web browser."""

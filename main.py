@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 import config
 from create_poster import PosterAthletes, PosterSaver
