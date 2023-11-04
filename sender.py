@@ -33,6 +33,13 @@ class PosterAlbumSender:
 
 
 class TelegramSender(PosterAlbumSender):
+    """
+    A class for sending an album of images to a Telegram chat.
+
+    This class inherits from PosterAlbumSender and provides methods to prepare and send a media group
+    of images with captions to a specified Telegram chat.
+    """
+    
     @property
     def get_caption(self) -> str:
         strava_club_id = self.CLUB_ID
