@@ -135,7 +135,7 @@ class Strava:
         )
         self.logger.info("Open page club URL: %s", self.browser.current_url)
 
-    def wait_element(self, by_element: tuple, timeout: int = 10) -> WebElement:
+    def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
         """Wait for the element"""
 
         wait = WebDriverWait(self.browser, timeout)

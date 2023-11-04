@@ -1,0 +1,1 @@
+## Here will be the generated posters with the rating of the athletes for the week.
