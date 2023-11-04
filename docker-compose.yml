@@ -4,6 +4,7 @@ services:
   selenium-chrome:
     image: selenium/standalone-chrome
     shm_size: 2g
+    restart: always
     networks:
       custom_network:
         ipv4_address: 172.0.0.2
