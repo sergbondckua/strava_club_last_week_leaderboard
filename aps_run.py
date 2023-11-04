@@ -14,9 +14,9 @@ def start_scheduler() -> None:
         func=run_main,
         trigger="cron",
         second=0,
-        minute=15,
-        hour=18,
-        day_of_week="fri",
+        minute=0,
+        hour=10,
+        day_of_week="mon",
     )
 
     # Start the scheduler

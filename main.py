@@ -1,10 +1,9 @@
 import asyncio
-import os
 
 import config
 from create_poster import PosterAthletes, PosterSaver
 from parsing import Strava
-from sender_new import TelegramSender
+from sender import TelegramSender
 
 
 async def main():

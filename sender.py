@@ -1,77 +1,95 @@
-"""Sender Telegram to channel/chat"""
-import json
-import locale
-import logging
-from os import path
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
+from aiogram import Bot, types
 
-import telegram
-
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
+import config
+from config import format_and_translate_date
 
 
-class SenderTelegram:
-    """ Send posters on the Telegram channel/chat
-    Args:
-        :token: The token your Telegram Bot
-    Methods:
-        :telegram_send: Send to Telegram
+class PosterAlbumSender:
     """
-    _BASE_DIR = Path(__file__).resolve().parent
+    This class is responsible for sending a media group of photos to a bot.
+    """
 
-    def __init__(self, token_bot: str):
-        self.logging = logging.getLogger(__name__)
-        self.bot = telegram.Bot(token=token_bot)
+    IMAGE_PATH = os.path.join(Path(__file__).resolve().parent, "out_posters")
+    CLUB_ID = config.env.str("CLUB_ID")
 
-    def telegram_send(self, chat_id: str, language=None, strava_club_id=None):
-        """Send messages to Telegram
-        Args:
-            :chat_id: The Telegram chat ID or channel to send
-            :language: The language you your chat
-            :strava_club_id: The Strava club ID
+    def __init__(self, bot_token: str):
+        self.logger = config.logger
+        self.bot = Bot(bot_token, parse_mode=types.ParseMode.HTML)
+
+    def get_image_files(self) -> list[str]:
+        """Get a list the files in the IMAGE_PATH directory."""
+
+        allowed_extensions = (".jpg", ".jpeg", ".png", ".gif")
+        image_files = [
+            file
+            for file in os.listdir(self.IMAGE_PATH)
+            if file.lower().endswith(allowed_extensions)
+        ]
+
+        return image_files
+
+
+class TelegramSender(PosterAlbumSender):
+    @property
+    def get_caption(self) -> str:
+        strava_club_id = self.CLUB_ID
+
+        strava_url = (
+            f"<a href='https://www.strava.com/clubs/{strava_club_id}'>StravaClub</a>"
+            if strava_club_id
+            else "<a href='https://www.strava.com/'>Strava</a>"
+        )
+
+        text = "Summary of {week}-th running week ({month}, {year})"
+        last_week_date = datetime.now() - timedelta(weeks=1)
+        description = config.translate.gettext(text).format(
+            **format_and_translate_date(last_week_date)
+        )
+        tag_month = last_week_date.strftime("%B").lower()
+
+        caption = (
+            f"📊 <b>{description}</b>\n\n"
+            f"#{tag_month} | #leaders_last_week | {strava_url}"
+        )
+
+        return caption
+
+    async def get_media_group(self) -> types.MediaGroup:
         """
-        self.logging.info("Sending to Telegram channel...")
-        # Activity: Typing text
-        self.bot.sendChatAction(chat_id=chat_id, action="typing")
-        if strava_club_id:
-            url = f"<a href='https://www.strava.com/clubs/" \
-                  f"{str(strava_club_id)}'>StravaClub</a>"
-        else:
-            url = "<a href='https://www.strava.com/'>Strava</a>"
-        description = (datetime.now() - timedelta(weeks=1)).strftime(
-            "Summary of %W-th running week (%B, %Y)")
-        if language:
-            try:
-                with open(path.join(
-                        self._BASE_DIR, "resources/lang/package.json"),
-                        mode="r",
-                        encoding="utf-8") as file:
-                    data = json.load(file)
-                if lang := data.get(language):
-                    locale.setlocale(locale.LC_ALL, lang["name_locale"])
-                    description = (
-                            datetime.now() - timedelta(weeks=1)).strftime(
-                        lang["description"])
-            except FileNotFoundError as error:
-                self.logging.error(error)
-        tag_month = (datetime.now() - timedelta(weeks=1)).strftime("%B")
-        media_group = []
-        for num in range(1, 3):
-            with open(
-                    path.join(self._BASE_DIR, f"out_posters/out{num}.png"),
-                    "rb") as poster:
-                media_group.append(telegram.InputMediaPhoto(
-                    poster,
-                    parse_mode="html",
-                    caption=f"📊 <b>{description}</b>\n\n"
-                            f"#{tag_month.lower()} | "
-                            f"#leaders_last_week | "
-                            f"{url}"
-                    if num == 1 else ""
-                ))
-        self.bot.sendMediaGroup(chat_id=chat_id, media=media_group)
-        self.logging.info("Posters have been sent successfully.")
+        Creates and returns a MediaGroup object based on images located in the specified folder.
+        """
+
+        image_files = sorted(self.get_image_files())
+        media_group = types.MediaGroup()
+
+        for num, image_file in enumerate(image_files):
+            image_input = types.InputFile(
+                os.path.join(self.IMAGE_PATH, image_file)
+            )
+            caption = self.get_caption if not num else None
+
+            media_group.attach_photo(
+                types.InputMediaPhoto(
+                    media=image_input,
+                    caption=caption,
+                    parse_mode=types.ParseMode.HTML,
+                )
+            )
+
+        return media_group
+
+    async def send_album_to_telegram(self, chat_id):
+        """Send an album of images to a Telegram chat."""
+
+        self.logger.info("Sending to Telegram channel %s ...", chat_id)
+        session = await self.bot.get_session()
+        await self.bot.send_chat_action(
+            chat_id=chat_id, action=types.ChatActions.UPLOAD_PHOTO
+        )
+        media = await self.get_media_group()
+        await self.bot.send_media_group(chat_id=chat_id, media=media)
+        await session.close()
+        self.logger.info("Album have been sent successfully.")

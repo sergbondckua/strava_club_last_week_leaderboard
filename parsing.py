@@ -3,10 +3,7 @@ import os
 import pickle
 from os import path, remove
 from pathlib import Path
-
-
 import requests
-import urllib3
 
 # Selenium modules
 from selenium import webdriver
@@ -343,20 +340,3 @@ class InfoStravaClub:
         """Get club info"""
         response = requests.get(self.club_url, headers=self.headers, timeout=5)
         return response.json()
-
-
-async def main():
-    """Main function"""
-
-    with Strava(
-        email=config.env.str("EMAIL"), password=config.env.str("PASSWD")
-    ) as strava:
-        athletes_rank = strava.get_this_week_or_last_week_leaders(
-            config.env.int("CLUB_ID"),
-            last_week=True,
-        )
-        print(athletes_rank)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

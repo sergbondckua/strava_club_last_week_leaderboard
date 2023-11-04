@@ -1,6 +1,13 @@
 import logging
+import gettext
+
+from datetime import datetime
 
 from apscheduler.schedulers.blocking import BlockingScheduler
+
+from babel import Locale
+from babel.dates import format_date
+
 from environs import Env
 
 # Read environment variables
@@ -16,3 +23,31 @@ logger = logging.getLogger(__name__)
 
 # Create a scheduler
 scheduler = BlockingScheduler(timezone=env.str("TZ"))
+
+# Locale
+
+# We create a locale (language) object for translation
+locale = Locale(env.str("LOCALE"))
+
+# Initialize the gettext object to use the current locale
+translate = gettext.translation(
+    "bot", localedir="locales", languages=[locale.language]
+)
+
+
+def format_and_translate_date(date: datetime) -> dict:
+    """Format and translate a date."""
+
+    # Format the date, month, and year using Babel
+    formatted_week = format_date(date, format="w", locale=locale)
+    formatted_month = format_date(date, format="MMMM", locale=locale)
+    formatted_year = format_date(date, format="yyyy", locale=locale)
+
+    # Create a dictionary to hold the variables for substitution
+    variables = {
+        "week": formatted_week,
+        "month": formatted_month,
+        "year": formatted_year,
+    }
+
+    return variables
