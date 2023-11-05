@@ -28,7 +28,7 @@ A Python code for scraping data from Strava club leaderboards using Selenium.
     ```
 2. **Copy .env.template to .env and fill in the necessary data:**
    ```bash
-   cp .env.template .env
+   cp .env_dist .env
    ```
 3. **Without Docker:**
    1. Create a [venv](https://docs.python.org/3/library/venv.html)
