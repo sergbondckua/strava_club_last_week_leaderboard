@@ -49,6 +49,10 @@ A Python code for scraping data from Strava club leaderboards using Selenium.
       ```bash
       python aps_run.py
       ```
+      OR
+      ```bash
+      python main.py
+      ```
 4. **Docker:**
    1. You can directly run the project with Docker. If you don't have Docker installed, you can [download and install it](https://docs.docker.com/get-docker/).
    2. Run the project with the command: `docker-compose up` or `docker-compose up -d`
