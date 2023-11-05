@@ -1,4 +1,3 @@
-import asyncio
 import os
 import pickle
 from os import path, remove
@@ -47,7 +46,7 @@ class Strava:
         """Configure ChromeOptions for the webdriver."""
 
         option_arguments = [
-            "--headless=new",
+            # "--headless=new",
             "--hide-scrollbars",
             "start-maximized",
             "--no-sandbox",
@@ -103,6 +102,7 @@ class Strava:
         self.close_browser()
 
     def _handle_authorization(self):
+        self.open_sign_in_page()
         if self.email and path.isfile(
             path.join(self.BASE_DIR, f"cookies/{self.email.split('@')[0]}")
         ):
@@ -111,7 +111,7 @@ class Strava:
             if not self.check_apply_cookie():
                 self.remove_cookie()
         elif self.email and self.password:
-            self.click_login_button()
+            # self.click_login_button()
             self.authorization(self.email, self.password)
 
     def get_this_week_or_last_week_leaders(
@@ -119,8 +119,8 @@ class Strava:
     ) -> list:
         """Get the leaders of a club for this or last week."""
 
-        self.open_page_club(club_id)
         self._handle_authorization()
+        self.open_page_club(club_id)
 
         if last_week:
             self.click_last_week_button()
