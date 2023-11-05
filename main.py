@@ -19,7 +19,7 @@ async def main():
 
     async with PosterAthletes() as pa:
         top_10 = athletes_rank[:10]
-        remainder = athletes_rank[10:40]
+        remainder = athletes_rank[10:]
         tag = len(remainder) - (len(remainder) % 15)
         groups = [top_10] + [remainder[i : i + 15] for i in range(0, tag, 15)]
         poster_saver = PosterSaver()
