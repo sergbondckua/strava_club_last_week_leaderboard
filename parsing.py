@@ -46,7 +46,7 @@ class Strava:
         """Configure ChromeOptions for the webdriver."""
 
         option_arguments = [
-            # "--headless=new",
+            "--headless=new",
             "--hide-scrollbars",
             "start-maximized",
             "--no-sandbox",
@@ -102,6 +102,15 @@ class Strava:
         self.close_browser()
 
     def _handle_authorization(self):
+        """
+        Handle user authorization.
+
+        This method performs user authorization, which involves opening a
+        sign-in page, checking for cookie files, reading cookies,
+        and applying them if valid, or logging in with email and password
+        if no valid cookies are found.
+        """
+
         self.open_sign_in_page()
         if self.email and path.isfile(
             path.join(self.BASE_DIR, f"cookies/{self.email.split('@')[0]}")
@@ -111,7 +120,6 @@ class Strava:
             if not self.check_apply_cookie():
                 self.remove_cookie()
         elif self.email and self.password:
-            # self.click_login_button()
             self.authorization(self.email, self.password)
 
     def get_this_week_or_last_week_leaders(
