@@ -3,6 +3,8 @@ import os
 import pickle
 from os import path, remove
 from pathlib import Path
+import time
+
 import requests
 
 # Selenium modules
@@ -40,6 +42,7 @@ class Strava:
         self.logger = config.logger
         self.options = self._configure_driver_options()
         self.service = webdriver.ChromeService()
+        self.cookie_manager = CookieManager(email)
         self.browser = None
 
     @staticmethod
@@ -113,15 +116,33 @@ class Strava:
         """
 
         self.open_sign_in_page()
-        if self.email and path.isfile(
-            path.join(self.BASE_DIR, f"cookies/{self.email.split('@')[0]}")
-        ):
-            self.logger.info("Cookie file found. Try authorization.")
-            self.read_cookie()
-            if not self.check_apply_cookie():
-                self.remove_cookie()
+        cookies = self.cookie_manager.read_cookie()  # Try to read cookies
+
+        if cookies is not None and self.check_apply_cookies(cookies):
+            self.logger.info("Cookie file found and applied.")
         elif self.email and self.password:
             self.authorization(self.email, self.password)
+
+    def check_apply_cookies(self, cookies: list[dict[str, str]]) -> bool:
+        """Check if a cookie has been applied"""
+
+        for cookie in cookies:
+            self.browser.add_cookie(cookie)
+
+        self.browser.refresh()
+
+        try:
+            WebDriverWait(self.browser, timeout=3).until_not(
+                ec.visibility_of_element_located((By.CLASS_NAME, "btn-signup"))
+            )
+        except (NoSuchElementException, TimeoutException):
+            self.logger.warning(
+                "Invalid cookies! Authorization failed. "
+                "Authentication will be attempted using a login and password"
+            )
+            return False
+
+        return True
 
     def get_this_week_or_last_week_leaders(
         self, club_id: int, last_week=True
@@ -234,13 +255,13 @@ class Strava:
         self.click_submit_login()
 
         if self.check_alert_msg():
+            self.cookie_manager.remove_cookie()
             raise AuthorizationFailureException(
                 "The username or password did not match."
             )
 
         self.logger.info("Authorization successful.")
-        # self.save_cookie()
-        CookieManager(self.email).save_cookie(self.browser.get_cookies())
+        self.cookie_manager.save_cookie(self.browser.get_cookies())
 
     def open_sign_in_page(self):
         """Open browser and go to url"""
@@ -274,81 +295,39 @@ class Strava:
             )
         except (TimeoutException, NoSuchElementException):
             return False
+
         return True
-
-    def check_apply_cookie(self) -> bool:
-        """Check if a cookie has been applied"""
-
-        try:
-            WebDriverWait(self.browser, timeout=1).until_not(
-                ec.visibility_of_element_located((By.CLASS_NAME, "btn-login"))
-            )
-        except (NoSuchElementException, TimeoutException):
-            self.logger.warning("Authorization failed.")
-        return True
-
-    def save_cookie(self):
-        """Get cookies and save to a file"""
-
-        with open(
-            path.join(self.BASE_DIR, f"cookies/{self.email.split('@')[0]}"),
-            "wb",
-        ) as cookie:
-            pickle.dump(self.browser.get_cookies(), cookie)
-            self.logger.info("Cookie file is saved.")
-
-    def read_cookie(self):
-        """Open the cookie and use it for authorization"""
-
-        with open(
-            path.join(self.BASE_DIR, f"cookies/{self.email.split('@')[0]}"),
-            "rb",
-        ) as cookie:
-            for row in pickle.load(cookie):
-                self.browser.add_cookie(row)
-        # Require update so that cookies are applied
-        self.browser.refresh()
-
-    def remove_cookie(self):
-        """Delete invalid cookie"""
-
-        self.logger.warning("Invalid cookies. Delete cookies. Try again.")
-        remove(path.join(self.BASE_DIR, f"cookies/{self.email.split('@')[0]}"))
-        raise ValueError("Invalid cookies. You need username and password.")
 
 
 class CookieManager:
+    """
+    CookieManager is a utility class for managing user-specific cookies.
+    """
     def __init__(self, email):
         self.email = email
+        self.filename = f"{self.email.split('@')[0]}.cookies"
+        self.file_path = path.join(config.BASE_DIR, f"cookies/{self.filename}")
 
     def save_cookie(self, cookies):
         """Save cookies to a file."""
-
-        filename = f"{self.email.split('@')[0]}.cookies"
-        with open(
-            path.join(config.BASE_DIR, f"cookies/{filename}"),
-            "wb",
-        ) as cookie_file:
+        with open(self.file_path, "wb") as cookie_file:
             pickle.dump(cookies, cookie_file)
             config.logger.info("Cookie file is saved.")
 
-    def read_cookie(self, browser):
+    def read_cookie(self):
         """Read cookies from a file."""
-        with open(
-            path.join(config.BASE_DIR, f"cookies/{self.email.split('@')[0]}"),
-            "rb",
-        ) as cookie:
-            for row in pickle.load(cookie):
-                browser.add_cookie(row)
-        # Require update so that cookies are applied
-        browser.refresh()
+        if os.path.exists(self.file_path):
+            with open(self.file_path, "rb") as cookie_file:
+                cookies = pickle.load(cookie_file)
+                return cookies
+
+        return None
 
     def remove_cookie(self):
         """Remove invalid cookies."""
-        # Implement cookie removal logic here
-
-
-
+        if os.path.exists(self.file_path):
+            config.logger.warning("Delete the file with invalid cookies.")
+            os.remove(self.file_path)
 
 
 async def main():
