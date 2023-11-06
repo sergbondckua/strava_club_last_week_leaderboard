@@ -37,7 +37,6 @@ class BrowserManager:
     @staticmethod
     def _configure_driver_options():
         """Configure ChromeOptions for the webdriver."""
-
         option_arguments = [
             "--headless=new",
             "--hide-scrollbars",
@@ -60,7 +59,6 @@ class BrowserManager:
     @property
     def start_driver(self):
         """Start the web driver (remote or local)."""
-
         try:
             if os.environ.get("DOCKER", False):
                 self.browser = webdriver.Remote(
@@ -81,7 +79,6 @@ class BrowserManager:
 
     def close_browser(self):
         """Close the web browser."""
-
         try:
             if self.browser:
                 self.browser.close()
@@ -93,7 +90,7 @@ class BrowserManager:
 class StravaAuthorization:
     """TODO: implement"""
 
-    # BASE_URL = "https://www.strava.com"
+    BASE_URL = "https://www.strava.com"
 
     def __init__(self, browser_manager, cookie_manager, email, password):
         self.email = email
