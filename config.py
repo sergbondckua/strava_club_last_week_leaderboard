@@ -2,6 +2,7 @@ import logging
 import gettext
 
 from datetime import datetime
+from pathlib import Path
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
@@ -20,6 +21,9 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+
+# Base directory
+BASE_DIR = Path(__file__).resolve().parent
 
 # Create a scheduler
 scheduler = BlockingScheduler(timezone=env.str("TZ"))

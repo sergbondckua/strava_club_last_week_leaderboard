@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pickle
 from os import path, remove
@@ -238,7 +239,8 @@ class Strava:
             )
 
         self.logger.info("Authorization successful.")
-        self.save_cookie()
+        # self.save_cookie()
+        CookieManager(self.email).save_cookie(self.browser.get_cookies())
 
     def open_sign_in_page(self):
         """Open browser and go to url"""
@@ -315,35 +317,52 @@ class Strava:
         raise ValueError("Invalid cookies. You need username and password.")
 
 
-class InfoStravaClub:
-    """Get information about the Strava Club"""
+class CookieManager:
+    def __init__(self, email):
+        self.email = email
 
-    auth_url = "https://www.strava.com/oauth/token"
+    def save_cookie(self, cookies):
+        """Save cookies to a file."""
 
-    def __init__(self, club_id):
-        self.club_id = club_id
-        self.club_url = "https://www.strava.com/api/v3/clubs/" + str(
-            self.club_id
+        filename = f"{self.email.split('@')[0]}.cookies"
+        with open(
+            path.join(config.BASE_DIR, f"cookies/{filename}"),
+            "wb",
+        ) as cookie_file:
+            pickle.dump(cookies, cookie_file)
+            config.logger.info("Cookie file is saved.")
+
+    def read_cookie(self, browser):
+        """Read cookies from a file."""
+        with open(
+            path.join(config.BASE_DIR, f"cookies/{self.email.split('@')[0]}"),
+            "rb",
+        ) as cookie:
+            for row in pickle.load(cookie):
+                browser.add_cookie(row)
+        # Require update so that cookies are applied
+        browser.refresh()
+
+    def remove_cookie(self):
+        """Remove invalid cookies."""
+        # Implement cookie removal logic here
+
+
+
+
+
+async def main():
+    """Main function"""
+
+    with Strava(
+        email=config.env.str("EMAIL"), password=config.env.str("PASSWD")
+    ) as strava:
+        athletes_rank = strava.get_this_week_or_last_week_leaders(
+            config.env.int("CLUB_ID"),
+            last_week=True,
         )
-        self.headers = {"Authorization": "Bearer " + self.access_token}
-        self.params = {"per_page": 200, "page": 1}
+        print(athletes_rank)
 
-    @property
-    def access_token(self):
-        """Get access token"""
-        payload = {
-            "client_id": "***",
-            "client_secret": "***",
-            "refresh_token": "***",
-            "grant_type": "refresh_token",
-            "f": "json",
-        }
-        res = requests.post(self.auth_url, data=payload, timeout=5)
-        access_token = res.json()["access_token"]
-        return access_token
 
-    @property
-    def get_club_info(self):
-        """Get club info"""
-        response = requests.get(self.club_url, headers=self.headers, timeout=5)
-        return response.json()
+if __name__ == "__main__":
+    asyncio.run(main())
