@@ -28,19 +28,10 @@ class AuthorizationFailureException(Exception):
     """Exception raised when authorization fails"""
 
 
-class Strava:
-    """Class to interact with Strava"""
-
-    BASE_DIR = Path(__file__).resolve().parent
-    BASE_URL = "https://www.strava.com/"
-
-    def __init__(self, email=None, password=None):
-        self.email = email
-        self.password = password
-        self.logger = config.logger
+class BrowserManager:
+    def __init__(self):
         self.options = self._configure_driver_options()
         self.service = webdriver.ChromeService()
-        self.cookie_manager = CookieManager(email)
         self.browser = None
 
     @staticmethod
@@ -66,6 +57,7 @@ class Strava:
 
         return options
 
+    @property
     def start_driver(self):
         """Start the web driver (remote or local)."""
 
@@ -80,10 +72,11 @@ class Strava:
                     service=self.service,
                     options=self.options,
                 )
-
             return self.browser
         except WebDriverException as error:
-            self.logger.error("Error starting the web browser: %s", str(error))
+            config.logger.error(
+                "Error starting the web browser: %s", str(error)
+            )
             raise error
 
     def close_browser(self):
@@ -92,162 +85,59 @@ class Strava:
         try:
             if self.browser:
                 self.browser.close()
-                self.logger.info("Browser closed")
+                config.logger.info("Browser closed")
         except WebDriverException as e:
-            self.logger.error("Error closing the web browser: %s", str(e))
+            config.logger.error("Error closing the web browser: %s", str(e))
 
-    def __enter__(self):
-        self.browser = self.start_driver()
-        return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close_browser()
+class StravaAuthorization:
+    """TODO: implement"""
 
-    def _handle_authorization(self):
+    # BASE_URL = "https://www.strava.com"
+
+    def __init__(self, browser_manager, cookie_manager, email, password):
+        self.email = email
+        self.password = password
+        self.browser = browser_manager.start_driver
+        self.cookie_manager = cookie_manager
+
+    def authorize(self):
         """
-        Handle user authorization.
-
-        This method performs user authorization, which involves opening a
-        sign-in page, checking for cookie files, reading cookies,
-        and applying them if valid, or logging in with email and password
-        if no valid cookies are found.
+        TODO: Implement
         """
-
         self.open_sign_in_page()
         cookies = self.cookie_manager.read_cookie()  # Try to read cookies
-
         if cookies is not None and self.check_apply_cookies(cookies):
-            self.logger.info("Cookie file found and applied.")
+            config.logger.info("Cookie file found and applied.")
         elif self.email and self.password:
-            self.authorization(self.email, self.password)
+            self.authorization_process(self.email, self.password)
 
     def check_apply_cookies(self, cookies: list[dict[str, str]]) -> bool:
         """Check if a cookie has been applied"""
-
         for cookie in cookies:
             self.browser.add_cookie(cookie)
 
         self.browser.refresh()
 
         try:
-            WebDriverWait(self.browser, timeout=3).until_not(
+            WebDriverWait(self.browser, timeout=1).until_not(
                 ec.visibility_of_element_located((By.CLASS_NAME, "btn-signup"))
             )
         except (NoSuchElementException, TimeoutException):
-            self.logger.warning(
+            config.logger.warning(
                 "Invalid cookies! Authorization failed. "
                 "Authentication will be attempted using a login and password"
             )
             return False
-
         return True
 
-    def get_this_week_or_last_week_leaders(
-        self, club_id: int, last_week=True
-    ) -> list:
-        """Get the leaders of a club for this or last week."""
-
-        self._handle_authorization()
-        self.open_page_club(club_id)
-
-        if last_week:
-            self.click_last_week_button()
-
-        return self.get_data_leaderboard()
-
-    def open_page_club(self, club_id: int):
+    def open_sign_in_page(self):
         """Open browser and go to url"""
+        self.browser.get(f"{self.BASE_URL}/login")
+        config.logger.info("Open page Login URL: %s", self.browser.current_url)
 
-        url = f"{self.BASE_URL}clubs/{str(club_id)}/leaderboard"
-        self.browser.get(url)
-        self.logger.info("Open page club URL: %s", self.browser.current_url)
-
-    def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
-        """Wait for the element"""
-
-        wait = WebDriverWait(self.browser, timeout)
-        try:
-            element = wait.until(ec.visibility_of_element_located(by_element))
-            return element
-        except TimeoutException as ex:
-            raise TimeoutException("Not found element") from ex
-
-    def click_last_week_button(self):
-        """Click last week button on table"""
-
-        self.wait_element((By.CLASS_NAME, "last-week")).click()
-        self.logger.info("Go to last week's leaderboard")
-
-    def click_login_button(self):
-        """Click login button on login page"""
-
-        self.wait_element((By.CLASS_NAME, "btn-login")).click()
-        self.logger.info("Open page Login URL: %s", self.browser.current_url)
-
-    def click_submit_login(self):
-        """Click Login button submit"""
-
-        self.wait_element((By.ID, "login-button")).click()
-
-    def get_data_leaderboard(self) -> list:
-        """Get data leaderboard"""
-
-        leaderboard = []
-        table = self.wait_element((By.CLASS_NAME, "dense"))
-        tr_contents = table.find_elements(By.TAG_NAME, "tr")
-        for num, trow in enumerate(tr_contents[1:]):
-            athlete_url = (
-                trow.find_element(By.TAG_NAME, "a")
-                .get_attribute("href")
-                .strip()
-            )
-            avatar_medium = (
-                trow.find_element(By.TAG_NAME, "img")
-                .get_attribute("src")
-                .strip()
-            )
-            avatar_large = (
-                trow.find_element(By.TAG_NAME, "img")
-                .get_attribute("src")
-                .strip()
-                .replace("medium", "large")
-            )
-
-            # Iterate to find 'td' under each 'tr'
-            lst = [td.text for td in trow.find_elements(By.TAG_NAME, "td")]
-
-            # List of dict with the athlete's data from the table.
-            leaderboard.append(
-                dict(
-                    zip(
-                        [
-                            "rank",
-                            "athlete_name",
-                            "distance",
-                            "activities",
-                            "longest",
-                            "avg_pace",
-                            "elev_gain",
-                        ],
-                        lst,
-                    )
-                )
-            )
-
-            leaderboard[num]["avatar_large"] = avatar_large
-            leaderboard[num]["avatar_medium"] = avatar_medium
-            leaderboard[num]["link"] = athlete_url
-
-        self.logger.info(
-            "A list of dictionaries with athlete data from the table"
-            "has been generated %s athletes of the club",
-            len(leaderboard),
-        )
-        return leaderboard
-
-    def authorization(self, username: str, password: str):
+    def authorization_process(self, username: str, password: str):
         """Sign in to the Strava"""
-
         self.input_email(username)
         self.input_password(password)
         self.click_submit_login()
@@ -258,32 +148,36 @@ class Strava:
                 "The username or password did not match."
             )
 
-        self.logger.info("Authorization successful.")
+        config.logger.info("Authorization successful.")
         self.cookie_manager.save_cookie(self.browser.get_cookies())
 
-    def open_sign_in_page(self):
-        """Open browser and go to url"""
+    def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
+        """Wait for the element"""
+        wait = WebDriverWait(self.browser, timeout)
+        try:
+            element = wait.until(ec.visibility_of_element_located(by_element))
+            return element
+        except TimeoutException as ex:
+            raise TimeoutException("Not found element") from ex
 
-        self.browser.get(f"{self.BASE_URL}login")
-        self.logger.info("Open page Login URL: %s", self.browser.current_url)
+    def click_submit_login(self):
+        """Click Login button submit"""
+        self.wait_element((By.ID, "login-button")).click()
 
     def input_email(self, email: str):
         """Input email address"""
-
         field = self.wait_element((By.ID, "email"))
         field.clear()
         field.send_keys(email)
 
     def input_password(self, password: str):
         """Input password"""
-
         field = self.wait_element((By.ID, "password"))
         field.clear()
         field.send_keys(password)
 
     def check_alert_msg(self) -> bool:
         """Check if the alert"""
-
         wait = WebDriverWait(self.browser, 0)
         try:
             wait.until(
@@ -293,7 +187,6 @@ class Strava:
             )
         except (TimeoutException, NoSuchElementException):
             return False
-
         return True
 
 
@@ -301,6 +194,7 @@ class CookieManager:
     """
     CookieManager is a utility class for managing user-specific cookies.
     """
+
     def __init__(self, email):
         self.email = email
         self.filename = f"{self.email.split('@')[0]}.cookies"
@@ -308,41 +202,41 @@ class CookieManager:
 
     def save_cookie(self, cookies):
         """Save cookies to a file."""
-
         with open(self.file_path, "wb") as cookie_file:
             pickle.dump(cookies, cookie_file)
             config.logger.info("Cookie file is saved.")
 
     def read_cookie(self):
         """Read cookies from a file."""
-
         if os.path.exists(self.file_path):
             with open(self.file_path, "rb") as cookie_file:
                 cookies = pickle.load(cookie_file)
                 return cookies
-
         return None
 
     def remove_cookie(self):
         """Remove invalid cookies."""
-
         if os.path.exists(self.file_path):
             config.logger.warning("Delete the file with invalid cookies.")
             os.remove(self.file_path)
 
 
-async def main():
-    """Main function"""
-
-    with Strava(
-        email=config.env.str("EMAIL"), password=config.env.str("PASSWD")
-    ) as strava:
-        athletes_rank = strava.get_this_week_or_last_week_leaders(
-            config.env.int("CLUB_ID"),
-            last_week=True,
-        )
-        print(athletes_rank)
+def main():
+    browser_manager = BrowserManager()
+    cookie_manager = CookieManager(config.env(str("EMAIL")))
+    authorization = StravaAuthorization(
+        browser_manager,
+        cookie_manager,
+        config.env(str("EMAIL")),
+        config.env.str("PASSWD"),
+    )
+    try:
+        authorization.authorize()
+    except Exception as e:
+        print("An error occurred:", str(e))
+    finally:
+        browser_manager.close_browser()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
