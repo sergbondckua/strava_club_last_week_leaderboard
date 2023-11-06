@@ -113,7 +113,6 @@ class StravaAuthorization:
         """Check if a cookie has been applied"""
         for cookie in cookies:
             self.browser.add_cookie(cookie)
-
         self.browser.refresh()
 
         try:
