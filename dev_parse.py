@@ -29,6 +29,8 @@ class AuthorizationFailureException(Exception):
 
 
 class BrowserManager:
+    """ TODO: implement"""
+
     def __init__(self):
         self.options = self._configure_driver_options()
         self.service = webdriver.ChromeService()
@@ -57,7 +59,7 @@ class BrowserManager:
         return options
 
     @property
-    def start_driver(self):
+    def start_browser(self):
         """Start the web driver (remote or local)."""
         try:
             if os.environ.get("DOCKER", False):
@@ -92,11 +94,11 @@ class StravaAuthorization:
 
     BASE_URL = "https://www.strava.com"
 
-    def __init__(self, browser_manager, cookie_manager, email, password):
+    def __init__(self, browser_manager, email, password):
         self.email = email
         self.password = password
-        self.browser = browser_manager.start_driver
-        self.cookie_manager = cookie_manager
+        self.browser = browser_manager.start_browser
+        self.cookie_manager = CookieManager(email)
 
     def authorize(self):
         """
@@ -219,10 +221,8 @@ class CookieManager:
 
 def main():
     browser_manager = BrowserManager()
-    cookie_manager = CookieManager(config.env(str("EMAIL")))
     authorization = StravaAuthorization(
         browser_manager,
-        cookie_manager,
         config.env(str("EMAIL")),
         config.env.str("PASSWD"),
     )
