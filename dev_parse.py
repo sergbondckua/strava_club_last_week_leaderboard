@@ -1,9 +1,6 @@
-import asyncio
 import os
 import pickle
 from os import path
-from pathlib import Path
-
 
 # Selenium modules
 from selenium import webdriver
@@ -29,12 +26,19 @@ class AuthorizationFailureException(Exception):
 
 
 class BrowserManager:
-    """ TODO: implement"""
+    """TODO: implement"""
 
     def __init__(self):
         self.options = self._configure_driver_options()
         self.service = webdriver.ChromeService()
         self.browser = None
+
+    def __enter__(self):
+        self.browser = self.start_browser
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close_browser()
 
     @staticmethod
     def _configure_driver_options():
@@ -92,9 +96,11 @@ class BrowserManager:
 class StravaAuthorization:
     """TODO: implement"""
 
-    BASE_URL = "https://www.strava.com"
+    BASE_URL = "https://www.strava.com"  # TDOD: edit this
 
-    def __init__(self, browser_manager, email, password):
+    def __init__(
+        self, browser_manager: BrowserManager, email: str, password: str
+    ):
         self.email = email
         self.password = password
         self.browser = browser_manager.start_browser
@@ -106,6 +112,7 @@ class StravaAuthorization:
         """
         self.open_sign_in_page()
         cookies = self.cookie_manager.read_cookie()  # Try to read cookies
+
         if cookies is not None and self.check_apply_cookies(cookies):
             config.logger.info("Cookie file found and applied.")
         elif self.email and self.password:
@@ -189,11 +196,9 @@ class StravaAuthorization:
 
 
 class CookieManager:
-    """
-    CookieManager is a utility class for managing user-specific cookies.
-    """
+    """CookieManager is a utility class for managing user-specific cookies."""
 
-    def __init__(self, email):
+    def __init__(self, email: str):
         self.email = email
         self.filename = f"{self.email.split('@')[0]}.cookies"
         self.file_path = path.join(config.BASE_DIR, f"cookies/{self.filename}")
@@ -213,14 +218,43 @@ class CookieManager:
         return None
 
     def remove_cookie(self):
-        """Remove invalid cookies."""
+        """Remove cookies."""
         if os.path.exists(self.file_path):
             config.logger.warning("Delete the file with invalid cookies.")
             os.remove(self.file_path)
 
 
+class StravaLeaderboard:
+    """TODO: Implement"""
+
+    BASE_URL = "https://www.strava.com"  # TODO: edit this
+
+    def __init__(self, browser_manager: BrowserManager):
+        self.browser = browser_manager.start_browser
+
+    def get_this_week_or_last_week_leaders(
+        self, club_id: int, last_week=True
+    ) -> list:
+        """Get the leaders of a club for this or last week."""
+
+        self.open_page_club(club_id)
+
+        if last_week:
+            self.click_last_week_button()
+
+        return self.get_data_leaderboard()
+
+    def open_page_club(self, club_id: int):
+        """Open browser and go to url"""
+
+        url = f"{self.BASE_URL}clubs/{str(club_id)}/leaderboard"
+        self.browser.get(url)
+        config.logger.info("Open page club URL: %s", self.browser.current_url)
+
+
 def main():
     browser_manager = BrowserManager()
+    print(type(browser_manager))
     authorization = StravaAuthorization(
         browser_manager,
         config.env(str("EMAIL")),
