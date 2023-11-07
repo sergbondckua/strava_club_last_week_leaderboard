@@ -44,7 +44,7 @@ class BrowserManager:
     def _configure_driver_options():
         """Configure ChromeOptions for the webdriver."""
         option_arguments = [
-            "--headless=new",
+            # "--headless=new",
             "--hide-scrollbars",
             "start-maximized",
             "--no-sandbox",
@@ -62,7 +62,7 @@ class BrowserManager:
 
         return options
 
-    @property
+    # @property
     def start_browser(self):
         """Start the web driver (remote or local)."""
         try:
@@ -103,7 +103,7 @@ class StravaAuthorization:
     ):
         self.email = email
         self.password = password
-        self.browser = browser_manager.start_browser
+        self.browser = browser_manager.start_browser()
         self.cookie_manager = CookieManager(email)
 
     def authorize(self):
@@ -194,6 +194,9 @@ class StravaAuthorization:
             return False
         return True
 
+    def get_browser(self):
+        return self.browser
+
 
 class CookieManager:
     """CookieManager is a utility class for managing user-specific cookies."""
@@ -229,8 +232,8 @@ class StravaLeaderboard:
 
     BASE_URL = "https://www.strava.com"  # TODO: edit this
 
-    def __init__(self, browser_manager: BrowserManager):
-        self.browser = browser_manager.start_browser
+    def __init__(self, browser: StravaAuthorization.get_browser):
+        self.browser = browser
 
     def get_this_week_or_last_week_leaders(
         self, club_id: int, last_week=True
@@ -242,26 +245,46 @@ class StravaLeaderboard:
         if last_week:
             self.click_last_week_button()
 
-        return self.get_data_leaderboard()
+        # return self.get_data_leaderboard()
+
+    def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
+        """Wait for the element"""
+
+        wait = WebDriverWait(self.browser, timeout)
+        try:
+            element = wait.until(ec.visibility_of_element_located(by_element))
+            return element
+        except TimeoutException as ex:
+            raise TimeoutException("Not found element") from ex
+
+    def click_last_week_button(self):
+        """Click last week button on table"""
+
+        self.wait_element((By.CLASS_NAME, "last-week")).click()
+        config.logger.info("Go to last week's leaderboard")
 
     def open_page_club(self, club_id: int):
         """Open browser and go to url"""
 
-        url = f"{self.BASE_URL}clubs/{str(club_id)}/leaderboard"
+        url = f"{self.BASE_URL}/clubs/{str(club_id)}/leaderboard"
         self.browser.get(url)
         config.logger.info("Open page club URL: %s", self.browser.current_url)
 
 
 def main():
     browser_manager = BrowserManager()
-    print(type(browser_manager))
     authorization = StravaAuthorization(
         browser_manager,
         config.env(str("EMAIL")),
         config.env.str("PASSWD"),
     )
+    leaderboard = StravaLeaderboard(authorization.get_browser())
+
     try:
         authorization.authorize()
+        leaderboard.get_this_week_or_last_week_leaders(
+            config.env.int("CLUB_ID")
+        )
     except Exception as e:
         print("An error occurred:", str(e))
     finally:
