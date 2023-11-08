@@ -30,7 +30,6 @@ class BrowserManager:
 
     def __init__(self):
         self.options = self._configure_driver_options()
-        self.service = webdriver.ChromeService()
         self.browser = None
 
     def __enter__(self):
@@ -44,7 +43,7 @@ class BrowserManager:
     def _configure_driver_options():
         """Configure ChromeOptions for the webdriver."""
         option_arguments = [
-            # "--headless=new",
+            "--headless=new",
             "--hide-scrollbars",
             "start-maximized",
             "--no-sandbox",
@@ -72,10 +71,7 @@ class BrowserManager:
                     options=self.options,
                 )
             else:
-                self.browser = webdriver.Chrome(
-                    service=self.service,
-                    options=self.options,
-                )
+                self.browser = webdriver.Chrome(options=self.options)
             return self.browser
         except WebDriverException as error:
             config.logger.error(
@@ -98,9 +94,7 @@ class StravaAuthorization:
 
     BASE_URL = "https://www.strava.com"  # TDOD: edit this
 
-    def __init__(
-        self, browser: BrowserManager, email: str, password: str
-    ):
+    def __init__(self, browser: webdriver, email: str, password: str):
         self.email = email
         self.password = password
         self.browser = browser
@@ -113,33 +107,28 @@ class StravaAuthorization:
 
         if cookies is not None and self.check_apply_cookies(cookies):
             config.logger.info("Cookie file found and applied.")
-        elif self.email and self.password:
-            self.authorization_process(self.email, self.password)
-
-    def check_apply_cookies(self, cookies: list[dict[str, str]]) -> bool:
-        """Check if a cookie has been applied"""
-        for cookie in cookies:
-            self.browser.add_cookie(cookie)
-        self.browser.refresh()
-
-        try:
-            WebDriverWait(self.browser, timeout=1).until_not(
-                ec.visibility_of_element_located((By.CLASS_NAME, "btn-signup"))
-            )
-        except (NoSuchElementException, TimeoutException):
+        else:
             config.logger.warning(
                 "Invalid cookies! Authorization failed. "
                 "Authentication will be attempted using a login and password"
             )
-            return False
-        return True
+            self.login(self.email, self.password)
 
-    def open_sign_in_page(self):
-        """Open browser and go to url"""
-        self.browser.get(f"{self.BASE_URL}/login")
-        config.logger.info("Open page Login URL: %s", self.browser.current_url)
+    def check_apply_cookies(self, cookies: list[dict[str, str]]) -> bool:
+        """Check if a cookie has been applied"""
+        self.add_cookies(cookies)
+        self.browser.refresh()
+        check = self.check_element(
+            (By.CLASS_NAME, "btn-signup"), timeout=1, until_not=True
+        )
+        return check
 
-    def authorization_process(self, username: str, password: str):
+    def check_alert_msg(self) -> bool:
+        """Check if the alert"""
+        alert = self.check_element((By.CLASS_NAME, "alert-message"))
+        return alert
+
+    def login(self, username: str, password: str):
         """Sign in to the Strava"""
         self.input_email(username)
         self.input_password(password)
@@ -154,14 +143,38 @@ class StravaAuthorization:
         config.logger.info("Authorization successful.")
         self.cookie_manager.save_cookie(self.browser.get_cookies())
 
+    def check_element(
+        self, by_element: tuple, timeout: int = 0, until_not: bool = False
+    ) -> bool:
+        """Check if an element is present on the page."""
+        wait = WebDriverWait(self.browser, timeout)
+        try:
+            if until_not:
+                wait.until_not(ec.visibility_of_element_located(by_element))
+            else:
+                wait.until(ec.visibility_of_element_located(by_element))
+        except (TimeoutException, NoSuchElementException):
+            return False
+        return True
+
     def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
         """Wait for the element"""
         wait = WebDriverWait(self.browser, timeout)
         try:
             element = wait.until(ec.visibility_of_element_located(by_element))
             return element
-        except TimeoutException as ex:
-            raise TimeoutException("Not found element") from ex
+        except TimeoutException as e:
+            raise TimeoutException("Not found element") from e
+
+    def open_sign_in_page(self):
+        """Open browser and go to url"""
+        self.browser.get(f"{self.BASE_URL}/login")
+        config.logger.info("Open page Login URL: %s", self.browser.current_url)
+
+    def add_cookies(self, cookies: list[dict[str, str]]) -> None:
+        """Add cookies to the browser."""
+        for cookie in cookies:
+            self.browser.add_cookie(cookie)
 
     def click_submit_login(self):
         """Click Login button submit"""
@@ -179,18 +192,103 @@ class StravaAuthorization:
         field.clear()
         field.send_keys(password)
 
-    def check_alert_msg(self) -> bool:
-        """Check if the alert"""
-        wait = WebDriverWait(self.browser, 0)
-        try:
-            wait.until(
-                ec.visibility_of_element_located(
-                    (By.CLASS_NAME, "alert-message")
-                )
+
+class StravaLeaderboard:
+    """TODO: Implement"""
+
+    BASE_URL = "https://www.strava.com"  # TODO: edit this
+
+    def __init__(self, browser: webdriver):
+        self.browser = browser
+
+    def get_this_week_or_last_week_leaders(
+        self, club_id: int, last_week=True
+    ) -> list:
+        """Get the leaders of a club for this or last week."""
+
+        self.open_page_club(club_id)
+
+        if last_week:
+            self.click_last_week_button()
+
+        return self.get_data_leaderboard()
+
+    def get_data_leaderboard(self) -> list:
+        """Get data leaderboard"""
+
+        leaderboard = []
+        table = self.wait_element((By.CLASS_NAME, "dense"))
+        tr_contents = table.find_elements(By.TAG_NAME, "tr")[1:]
+
+        for trow in tr_contents:
+            athlete_url = (
+                trow.find_element(By.TAG_NAME, "a")
+                .get_attribute("href")
+                .strip()
             )
-        except (TimeoutException, NoSuchElementException):
-            return False
-        return True
+            avatar_medium = (
+                trow.find_element(By.TAG_NAME, "img")
+                .get_attribute("src")
+                .strip()
+            )
+            avatar_large = avatar_medium.replace("medium", "large")
+
+            # Extract text values from 'td' elements and assign them to variables
+            (
+                rank,
+                athlete_name,
+                distance,
+                activities,
+                longest,
+                avg_pace,
+                elev_gain,
+            ) = (td.text for td in trow.find_elements(By.TAG_NAME, "td"))
+
+            athlete_data = {
+                "rank": rank,
+                "athlete_name": athlete_name,
+                "distance": distance,
+                "activities": activities,
+                "longest": longest,
+                "avg_pace": avg_pace,
+                "elev_gain": elev_gain,
+                "avatar_large": avatar_large,
+                "avatar_medium": avatar_medium,
+                "link": athlete_url,
+            }
+
+            leaderboard.append(athlete_data)
+
+        count_athletes = len(leaderboard)
+        config.logger.info(
+            "A list of dictionaries with athlete data from the table "
+            "has been generated for %s athletes of the club",
+            count_athletes,
+        )
+        return leaderboard
+
+    def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
+        """Wait for the element"""
+
+        wait = WebDriverWait(self.browser, timeout)
+        try:
+            element = wait.until(ec.visibility_of_element_located(by_element))
+            return element
+        except TimeoutException as ex:
+            raise TimeoutException("Not found element") from ex
+
+    def click_last_week_button(self):
+        """Click last week button on table"""
+
+        self.wait_element((By.CLASS_NAME, "last-week")).click()
+        config.logger.info("Go to last week's leaderboard")
+
+    def open_page_club(self, club_id: int):
+        """Open browser and go to url"""
+
+        url = f"{self.BASE_URL}/clubs/{str(club_id)}/leaderboard"
+        self.browser.get(url)
+        config.logger.info("Open page club URL: %s", self.browser.current_url)
 
 
 class CookieManager:
@@ -222,50 +320,6 @@ class CookieManager:
             os.remove(self.file_path)
 
 
-class StravaLeaderboard:
-    """TODO: Implement"""
-
-    BASE_URL = "https://www.strava.com"  # TODO: edit this
-
-    def __init__(self, browser: BrowserManager):
-        self.browser = browser
-
-    def get_this_week_or_last_week_leaders(
-        self, club_id: int, last_week=True
-    ) -> list:
-        """Get the leaders of a club for this or last week."""
-
-        self.open_page_club(club_id)
-
-        if last_week:
-            self.click_last_week_button()
-
-        # return self.get_data_leaderboard()
-
-    def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
-        """Wait for the element"""
-
-        wait = WebDriverWait(self.browser, timeout)
-        try:
-            element = wait.until(ec.visibility_of_element_located(by_element))
-            return element
-        except TimeoutException as ex:
-            raise TimeoutException("Not found element") from ex
-
-    def click_last_week_button(self):
-        """Click last week button on table"""
-
-        self.wait_element((By.CLASS_NAME, "last-week")).click()
-        config.logger.info("Go to last week's leaderboard")
-
-    def open_page_club(self, club_id: int):
-        """Open browser and go to url"""
-
-        url = f"{self.BASE_URL}/clubs/{str(club_id)}/leaderboard"
-        self.browser.get(url)
-        config.logger.info("Open page club URL: %s", self.browser.current_url)
-
-
 def main():
     browser_manager = BrowserManager()
     browser = browser_manager.start_browser
@@ -278,13 +332,15 @@ def main():
 
     try:
         authorization.authorize()
-        leaderboard.get_this_week_or_last_week_leaders(
+        athletes = leaderboard.get_this_week_or_last_week_leaders(
             config.env.int("CLUB_ID")
         )
     except Exception as e:
         print("An error occurred:", str(e))
     finally:
         browser_manager.close_browser()
+
+    print(athletes)
 
 
 if __name__ == "__main__":
