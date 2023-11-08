@@ -269,7 +269,6 @@ class StravaLeaderboard:
 
     def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
         """Wait for the element"""
-
         wait = WebDriverWait(self.browser, timeout)
         try:
             element = wait.until(ec.visibility_of_element_located(by_element))
@@ -279,13 +278,11 @@ class StravaLeaderboard:
 
     def click_last_week_button(self):
         """Click last week button on table"""
-
         self.wait_element((By.CLASS_NAME, "last-week")).click()
         config.logger.info("Go to last week's leaderboard")
 
     def open_page_club(self, club_id: int):
         """Open browser and go to url"""
-
         url = f"{self.BASE_URL}/clubs/{str(club_id)}/leaderboard"
         self.browser.get(url)
         config.logger.info("Open page club URL: %s", self.browser.current_url)
