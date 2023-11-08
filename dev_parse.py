@@ -62,7 +62,7 @@ class BrowserManager:
 
         return options
 
-    # @property
+    @property
     def start_browser(self):
         """Start the web driver (remote or local)."""
         try:
@@ -99,17 +99,15 @@ class StravaAuthorization:
     BASE_URL = "https://www.strava.com"  # TDOD: edit this
 
     def __init__(
-        self, browser_manager: BrowserManager, email: str, password: str
+        self, browser: BrowserManager, email: str, password: str
     ):
         self.email = email
         self.password = password
-        self.browser = browser_manager.start_browser()
+        self.browser = browser
         self.cookie_manager = CookieManager(email)
 
     def authorize(self):
-        """
-        TODO: Implement
-        """
+        """TODO: Implement"""
         self.open_sign_in_page()
         cookies = self.cookie_manager.read_cookie()  # Try to read cookies
 
@@ -194,9 +192,6 @@ class StravaAuthorization:
             return False
         return True
 
-    def get_browser(self):
-        return self.browser
-
 
 class CookieManager:
     """CookieManager is a utility class for managing user-specific cookies."""
@@ -232,7 +227,7 @@ class StravaLeaderboard:
 
     BASE_URL = "https://www.strava.com"  # TODO: edit this
 
-    def __init__(self, browser: StravaAuthorization.get_browser):
+    def __init__(self, browser: BrowserManager):
         self.browser = browser
 
     def get_this_week_or_last_week_leaders(
@@ -273,12 +268,13 @@ class StravaLeaderboard:
 
 def main():
     browser_manager = BrowserManager()
+    browser = browser_manager.start_browser
     authorization = StravaAuthorization(
-        browser_manager,
+        browser,
         config.env(str("EMAIL")),
         config.env.str("PASSWD"),
     )
-    leaderboard = StravaLeaderboard(authorization.get_browser())
+    leaderboard = StravaLeaderboard(browser)
 
     try:
         authorization.authorize()
