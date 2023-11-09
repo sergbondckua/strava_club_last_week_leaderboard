@@ -322,8 +322,9 @@ class CookieManager:
 class StravaLeaderboardRetriever:
     """Retrieves Strava leaderboard data for a given club."""
 
-    def __init__(self, email, password, club_id):
+    def __init__(self, email, password, club_id, last_week: bool = True):
         self.club_id = club_id
+        self.last_week = last_week
         self.browser = BrowserManager().start_browser()
         self.auth = StravaAuthorization(self.browser, email, password)
         self.leaderboard = StravaLeaderboard(self.browser)
