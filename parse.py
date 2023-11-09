@@ -87,10 +87,51 @@ class BrowserManager:
             config.logger.error("Error closing the web browser: %s", str(e))
 
 
-class StravaAuthorization:
+class CommonUtils:
+    """
+    A base class providing common methods for interacting with the Strava
+    web application.
+    """
+
+    def __init__(self, browser: webdriver):
+        self.browser = browser
+
+    def _check_element(
+        self, by_element: tuple, timeout: int = 0, until_not: bool = False
+    ) -> bool:
+        """Check if an element is present on the page."""
+        wait = WebDriverWait(self.browser, timeout)
+        try:
+            if until_not:
+                wait.until_not(ec.visibility_of_element_located(by_element))
+            else:
+                wait.until(ec.visibility_of_element_located(by_element))
+        except (TimeoutException, NoSuchElementException):
+            return False
+        return True
+
+    def _wait_element(
+        self, by_element: tuple, timeout: int = 15
+    ) -> WebElement:
+        """Wait for the element"""
+        wait = WebDriverWait(self.browser, timeout)
+        try:
+            element = wait.until(ec.visibility_of_element_located(by_element))
+            return element
+        except TimeoutException as e:
+            raise TimeoutException("Not found element") from e
+
+    def _open_page(self, url: str):
+        """Open the specified page URL in the browser."""
+        self.browser.get(url)
+        config.logger.info("Open page URL: %s", self.browser.current_url)
+
+
+class StravaAuthorization(CommonUtils):
     """Handles Strava user authentication."""
 
     def __init__(self, browser: webdriver, email: str, password: str):
+        super().__init__(browser)
         self.email = email
         self.password = password
         self.browser = browser
@@ -103,7 +144,8 @@ class StravaAuthorization:
         This method opens the login page, attempts to read cookies, and, in case of failure,
         performs authentication using a username and password.
         """
-        self._open_sign_in_page()
+
+        self._open_page(f"{BASE_URL}/login")
         cookies = self.cookie_manager.read_cookie()
 
         if cookies is not None and self._check_apply_cookies(cookies):
@@ -143,36 +185,6 @@ class StravaAuthorization:
         """Check if the alert"""
         return self._check_element((By.CLASS_NAME, "alert-message"))
 
-    def _check_element(
-        self, by_element: tuple, timeout: int = 0, until_not: bool = False
-    ) -> bool:
-        """Check if an element is present on the page."""
-        wait = WebDriverWait(self.browser, timeout)
-        try:
-            if until_not:
-                wait.until_not(ec.visibility_of_element_located(by_element))
-            else:
-                wait.until(ec.visibility_of_element_located(by_element))
-        except (TimeoutException, NoSuchElementException):
-            return False
-        return True
-
-    def _wait_element(
-        self, by_element: tuple, timeout: int = 15
-    ) -> WebElement:
-        """Wait for the element"""
-        wait = WebDriverWait(self.browser, timeout)
-        try:
-            element = wait.until(ec.visibility_of_element_located(by_element))
-            return element
-        except TimeoutException as e:
-            raise TimeoutException("Not found element") from e
-
-    def _open_sign_in_page(self):
-        """Open browser and go to url"""
-        self.browser.get(f"{BASE_URL}/login")
-        config.logger.info("Open page Login URL: %s", self.browser.current_url)
-
     def _add_cookies(self, cookies: list[dict[str, str]]) -> None:
         """Add cookies to the browser."""
         for cookie in cookies:
@@ -195,18 +207,18 @@ class StravaAuthorization:
         field.send_keys(password)
 
 
-class StravaLeaderboard:
+class StravaLeaderboard(CommonUtils):
     """A class for interacting with the Strava leaderboard of a club."""
 
     def __init__(self, browser: webdriver):
+        super().__init__(browser)
         self.browser = browser
 
     def get_this_week_or_last_week_leaders(
         self, club_id: int, last_week=True
     ) -> list:
         """Get the leaders of a club for this or last week."""
-
-        self._open_page_club(club_id)
+        self._open_page(f"{BASE_URL}/clubs/{str(club_id)}/leaderboard")
 
         if last_week:
             self._click_last_week_button()
@@ -267,27 +279,10 @@ class StravaLeaderboard:
         )
         return leaderboard
 
-    def _wait_element(
-        self, by_element: tuple, timeout: int = 15
-    ) -> WebElement:
-        """Wait for the element"""
-        wait = WebDriverWait(self.browser, timeout)
-        try:
-            element = wait.until(ec.visibility_of_element_located(by_element))
-            return element
-        except TimeoutException as ex:
-            raise TimeoutException("Not found element") from ex
-
     def _click_last_week_button(self):
         """Click last week button on table"""
         self._wait_element((By.CLASS_NAME, "last-week")).click()
         config.logger.info("Go to last week's leaderboard")
-
-    def _open_page_club(self, club_id: int):
-        """Open browser and go to url"""
-        url = f"{BASE_URL}/clubs/{str(club_id)}/leaderboard"
-        self.browser.get(url)
-        config.logger.info("Open page club URL: %s", self.browser.current_url)
 
 
 class CookieManager:
@@ -322,19 +317,22 @@ class CookieManager:
 class StravaLeaderboardRetriever:
     """Retrieves Strava leaderboard data for a given club."""
 
-    def __init__(self, email, password, club_id):
+    def __init__(self, email: str, password: str, club_id: int):
         self.club_id = club_id
         self.browser = BrowserManager().start_browser()
         self.auth = StravaAuthorization(self.browser, email, password)
         self.leaderboard = StravaLeaderboard(self.browser)
 
-    def retrieve_leaderboard_data(self) -> list[dict[str, str]] | None:
+    def retrieve_leaderboard_data(
+        self, last_week: bool = True
+    ) -> list[dict[str, str]] | None:
         """Retrieve leaderboard data for the specified Strava club."""
         try:
             self.auth.authorization()
             leaderboard_data = (
                 self.leaderboard.get_this_week_or_last_week_leaders(
                     self.club_id,
+                    last_week,
                 )
             )
             return leaderboard_data
