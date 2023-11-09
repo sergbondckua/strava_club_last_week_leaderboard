@@ -335,7 +335,8 @@ class StravaLeaderboardRetriever:
             self.auth.authorization()
             leaderboard_data = (
                 self.leaderboard.get_this_week_or_last_week_leaders(
-                    self.club_id
+                    self.club_id,
+                    self.last_week,
                 )
             )
             return leaderboard_data
