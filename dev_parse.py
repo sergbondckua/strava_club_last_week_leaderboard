@@ -43,7 +43,7 @@ class BrowserManager:
     def _configure_driver_options():
         """Configure ChromeOptions for the webdriver."""
         option_arguments = [
-            "--headless=new",
+            # "--headless=new",
             "--hide-scrollbars",
             "start-maximized",
             "--no-sandbox",
@@ -112,6 +112,7 @@ class StravaAuthorization:
                 "Invalid cookies! Authorization failed. "
                 "Authentication will be attempted using a login and password"
             )
+            self.cookie_manager.remove_cookie()
             self.login(self.email, self.password)
 
     def check_apply_cookies(self, cookies: list[dict[str, str]]) -> bool:
@@ -125,8 +126,7 @@ class StravaAuthorization:
 
     def check_alert_msg(self) -> bool:
         """Check if the alert"""
-        alert = self.check_element((By.CLASS_NAME, "alert-message"))
-        return alert
+        return self.check_element((By.CLASS_NAME, "alert-message"))
 
     def login(self, username: str, password: str):
         """Sign in to the Strava"""
@@ -135,7 +135,6 @@ class StravaAuthorization:
         self.click_submit_login()
 
         if self.check_alert_msg():
-            self.cookie_manager.remove_cookie()
             raise AuthorizationFailureException(
                 "The username or password did not match."
             )
@@ -318,26 +317,23 @@ class CookieManager:
 
 
 def main():
-    browser_manager = BrowserManager()
-    browser = browser_manager.start_browser
-    authorization = StravaAuthorization(
-        browser,
-        config.env(str("EMAIL")),
-        config.env.str("PASSWD"),
-    )
-    leaderboard = StravaLeaderboard(browser)
-
-    try:
-        authorization.authorize()
-        athletes = leaderboard.get_this_week_or_last_week_leaders(
-            config.env.int("CLUB_ID")
+    with BrowserManager() as browser_manager:
+        browser = browser_manager.start_browser
+        authorization = StravaAuthorization(
+            browser,
+            config.env(str("EMAIL")),
+            config.env.str("PASSWD"),
         )
-    except Exception as e:
-        print("An error occurred:", str(e))
-    finally:
-        browser_manager.close_browser()
+        leaderboard = StravaLeaderboard(browser)
+        try:
+            authorization.authorize()
+            athletes = leaderboard.get_this_week_or_last_week_leaders(
+                config.env.int("CLUB_ID")
+            )
+        except Exception as e:
+            config.logger.error("An error occurred: %s", str(e))
 
-    print(athletes)
+    # print(athletes)
 
 
 if __name__ == "__main__":
