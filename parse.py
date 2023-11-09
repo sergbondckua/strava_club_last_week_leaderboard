@@ -348,7 +348,7 @@ class StravaLeaderboardRetriever:
 
 def main():
     strava = StravaLeaderboardRetriever(
-        config.env(str("EMAIL")),
+        config.env.str("EMAIL"),
         config.env.str("PASSWD"),
         config.env.int("CLUB_ID"),
     )
