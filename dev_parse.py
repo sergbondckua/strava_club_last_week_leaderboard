@@ -16,6 +16,9 @@ from selenium.common.exceptions import (
 
 import config
 
+# Constants
+BASE_URL = "https://www.strava.com"
+
 
 class NotClosedException(Exception):
     """Unsuccessful attempt to close the browser"""
@@ -26,14 +29,14 @@ class AuthorizationFailureException(Exception):
 
 
 class BrowserManager:
-    """TODO: implement"""
+    """A context manager for managing a Selenium web browser instance."""
 
     def __init__(self):
         self.options = self._configure_driver_options()
         self.browser = None
 
     def __enter__(self):
-        self.browser = self.start_browser
+        self.start_browser()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -43,7 +46,7 @@ class BrowserManager:
     def _configure_driver_options():
         """Configure ChromeOptions for the webdriver."""
         option_arguments = [
-            # "--headless=new",
+            "--headless=new",
             "--hide-scrollbars",
             "start-maximized",
             "--no-sandbox",
@@ -61,7 +64,6 @@ class BrowserManager:
 
         return options
 
-    @property
     def start_browser(self):
         """Start the web driver (remote or local)."""
         try:
@@ -72,27 +74,25 @@ class BrowserManager:
                 )
             else:
                 self.browser = webdriver.Chrome(options=self.options)
-            return self.browser
         except WebDriverException as error:
             config.logger.error(
                 "Error starting the web browser: %s", str(error)
             )
             raise error
+        return self.browser
 
     def close_browser(self):
         """Close the web browser."""
         try:
             if self.browser:
-                self.browser.close()
+                self.browser.quit()
                 config.logger.info("Browser closed")
         except WebDriverException as e:
             config.logger.error("Error closing the web browser: %s", str(e))
 
 
 class StravaAuthorization:
-    """TODO: implement"""
-
-    BASE_URL = "https://www.strava.com"  # TDOD: edit this
+    """Handles Strava user authentication."""
 
     def __init__(self, browser: webdriver, email: str, password: str):
         self.email = email
@@ -100,12 +100,17 @@ class StravaAuthorization:
         self.browser = browser
         self.cookie_manager = CookieManager(email)
 
-    def authorize(self):
-        """TODO: Implement"""
-        self.open_sign_in_page()
-        cookies = self.cookie_manager.read_cookie()  # Try to read cookies
+    def authorization(self):
+        """
+        Performs user authentication.
 
-        if cookies is not None and self.check_apply_cookies(cookies):
+        This method opens the login page, attempts to read cookies, and, in case of failure,
+        performs authentication using a username and password.
+        """
+        self._open_sign_in_page()
+        cookies = self.cookie_manager.read_cookie()
+
+        if cookies is not None and self._check_apply_cookies(cookies):
             config.logger.info("Cookie file found and applied.")
         else:
             config.logger.warning(
@@ -113,28 +118,15 @@ class StravaAuthorization:
                 "Authentication will be attempted using a login and password"
             )
             self.cookie_manager.remove_cookie()
-            self.login(self.email, self.password)
+            self._login(self.email, self.password)
 
-    def check_apply_cookies(self, cookies: list[dict[str, str]]) -> bool:
-        """Check if a cookie has been applied"""
-        self.add_cookies(cookies)
-        self.browser.refresh()
-        check = self.check_element(
-            (By.CLASS_NAME, "btn-signup"), timeout=1, until_not=True
-        )
-        return check
-
-    def check_alert_msg(self) -> bool:
-        """Check if the alert"""
-        return self.check_element((By.CLASS_NAME, "alert-message"))
-
-    def login(self, username: str, password: str):
+    def _login(self, username: str, password: str):
         """Sign in to the Strava"""
-        self.input_email(username)
-        self.input_password(password)
-        self.click_submit_login()
+        self._input_email(username)
+        self._input_password(password)
+        self._click_submit_login()
 
-        if self.check_alert_msg():
+        if self._check_alert_msg():
             raise AuthorizationFailureException(
                 "The username or password did not match."
             )
@@ -142,7 +134,18 @@ class StravaAuthorization:
         config.logger.info("Authorization successful.")
         self.cookie_manager.save_cookie(self.browser.get_cookies())
 
-    def check_element(
+    def _check_apply_cookies(self, cookies: list[dict[str, str]]) -> bool:
+        """Check if a cookie has been applied"""
+        self._add_cookies(cookies)
+        self.browser.refresh()
+        check = self._check_element((By.CLASS_NAME, "btn-signup"), timeout=1, until_not=True)
+        return check
+
+    def _check_alert_msg(self) -> bool:
+        """Check if the alert"""
+        return self._check_element((By.CLASS_NAME, "alert-message"))
+
+    def _check_element(
         self, by_element: tuple, timeout: int = 0, until_not: bool = False
     ) -> bool:
         """Check if an element is present on the page."""
@@ -156,7 +159,7 @@ class StravaAuthorization:
             return False
         return True
 
-    def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
+    def _wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
         """Wait for the element"""
         wait = WebDriverWait(self.browser, timeout)
         try:
@@ -165,37 +168,35 @@ class StravaAuthorization:
         except TimeoutException as e:
             raise TimeoutException("Not found element") from e
 
-    def open_sign_in_page(self):
+    def _open_sign_in_page(self):
         """Open browser and go to url"""
-        self.browser.get(f"{self.BASE_URL}/login")
+        self.browser.get(f"{BASE_URL}/login")
         config.logger.info("Open page Login URL: %s", self.browser.current_url)
 
-    def add_cookies(self, cookies: list[dict[str, str]]) -> None:
+    def _add_cookies(self, cookies: list[dict[str, str]]) -> None:
         """Add cookies to the browser."""
         for cookie in cookies:
             self.browser.add_cookie(cookie)
 
-    def click_submit_login(self):
+    def _click_submit_login(self):
         """Click Login button submit"""
-        self.wait_element((By.ID, "login-button")).click()
+        self._wait_element((By.ID, "login-button")).click()
 
-    def input_email(self, email: str):
+    def _input_email(self, email: str):
         """Input email address"""
-        field = self.wait_element((By.ID, "email"))
+        field = self._wait_element((By.ID, "email"))
         field.clear()
         field.send_keys(email)
 
-    def input_password(self, password: str):
+    def _input_password(self, password: str):
         """Input password"""
-        field = self.wait_element((By.ID, "password"))
+        field = self._wait_element((By.ID, "password"))
         field.clear()
         field.send_keys(password)
 
 
 class StravaLeaderboard:
-    """TODO: Implement"""
-
-    BASE_URL = "https://www.strava.com"  # TODO: edit this
+    """A class for interacting with the Strava leaderboard of a club."""
 
     def __init__(self, browser: webdriver):
         self.browser = browser
@@ -205,21 +206,21 @@ class StravaLeaderboard:
     ) -> list:
         """Get the leaders of a club for this or last week."""
 
-        self.open_page_club(club_id)
+        self._open_page_club(club_id)
 
         if last_week:
-            self.click_last_week_button()
+            self._click_last_week_button()
 
-        return self.get_data_leaderboard()
+        return self._get_data_leaderboard()
 
-    def get_data_leaderboard(self) -> list:
+    def _get_data_leaderboard(self) -> list:
         """Get data leaderboard"""
 
         leaderboard = []
-        table = self.wait_element((By.CLASS_NAME, "dense"))
-        tr_contents = table.find_elements(By.TAG_NAME, "tr")[1:]
+        table = self._wait_element((By.CLASS_NAME, "dense"))
+        trows = table.find_elements(By.TAG_NAME, "tr")[1:]
 
-        for trow in tr_contents:
+        for trow in trows:
             athlete_url = (
                 trow.find_element(By.TAG_NAME, "a")
                 .get_attribute("href")
@@ -266,7 +267,7 @@ class StravaLeaderboard:
         )
         return leaderboard
 
-    def wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
+    def _wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
         """Wait for the element"""
         wait = WebDriverWait(self.browser, timeout)
         try:
@@ -275,14 +276,14 @@ class StravaLeaderboard:
         except TimeoutException as ex:
             raise TimeoutException("Not found element") from ex
 
-    def click_last_week_button(self):
+    def _click_last_week_button(self):
         """Click last week button on table"""
-        self.wait_element((By.CLASS_NAME, "last-week")).click()
+        self._wait_element((By.CLASS_NAME, "last-week")).click()
         config.logger.info("Go to last week's leaderboard")
 
-    def open_page_club(self, club_id: int):
+    def _open_page_club(self, club_id: int):
         """Open browser and go to url"""
-        url = f"{self.BASE_URL}/clubs/{str(club_id)}/leaderboard"
+        url = f"{BASE_URL}/clubs/{str(club_id)}/leaderboard"
         self.browser.get(url)
         config.logger.info("Open page club URL: %s", self.browser.current_url)
 
@@ -318,22 +319,22 @@ class CookieManager:
 
 def main():
     with BrowserManager() as browser_manager:
-        browser = browser_manager.start_browser
-        authorization = StravaAuthorization(
+        browser = browser_manager.start_browser()
+        auth = StravaAuthorization(
             browser,
             config.env(str("EMAIL")),
             config.env.str("PASSWD"),
         )
         leaderboard = StravaLeaderboard(browser)
         try:
-            authorization.authorize()
+            auth.authorization()
             athletes = leaderboard.get_this_week_or_last_week_leaders(
                 config.env.int("CLUB_ID")
             )
         except Exception as e:
             config.logger.error("An error occurred: %s", str(e))
 
-    # print(athletes)
+    print(athletes)
 
 
 if __name__ == "__main__":
