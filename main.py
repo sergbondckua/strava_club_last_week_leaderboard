@@ -1,21 +1,20 @@
 import asyncio
 
-import config
+from parse import StravaLeaderboardRetriever
 from create_poster import PosterAthletes, PosterSaver
-from parsing import Strava
 from sender import TelegramSender
+import config
 
 
 async def main():
     """Main function"""
 
-    with Strava(
-        email=config.env.str("EMAIL"), password=config.env.str("PASSWD")
-    ) as strava:
-        athletes_rank = strava.get_this_week_or_last_week_leaders(
-            config.env.int("CLUB_ID"),
-            last_week=True,
-        )
+    strava = StravaLeaderboardRetriever(
+        config.env(str("EMAIL")),
+        config.env.str("PASSWD"),
+        config.env.int("CLUB_ID"),
+    )
+    athletes_rank = strava.retrieve_leaderboard_data()
 
     async with PosterAthletes() as pa:
         top_10 = athletes_rank[:10]

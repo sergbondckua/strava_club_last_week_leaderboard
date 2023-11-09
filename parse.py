@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import pickle
 from os import path
@@ -18,10 +19,6 @@ import config
 
 # Constants
 BASE_URL = "https://www.strava.com"
-
-
-class NotClosedException(Exception):
-    """Unsuccessful attempt to close the browser"""
 
 
 class AuthorizationFailureException(Exception):
@@ -138,7 +135,9 @@ class StravaAuthorization:
         """Check if a cookie has been applied"""
         self._add_cookies(cookies)
         self.browser.refresh()
-        check = self._check_element((By.CLASS_NAME, "btn-signup"), timeout=1, until_not=True)
+        check = self._check_element(
+            (By.CLASS_NAME, "btn-signup"), timeout=1, until_not=True
+        )
         return check
 
     def _check_alert_msg(self) -> bool:
@@ -159,7 +158,9 @@ class StravaAuthorization:
             return False
         return True
 
-    def _wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
+    def _wait_element(
+        self, by_element: tuple, timeout: int = 15
+    ) -> WebElement:
         """Wait for the element"""
         wait = WebDriverWait(self.browser, timeout)
         try:
@@ -267,7 +268,9 @@ class StravaLeaderboard:
         )
         return leaderboard
 
-    def _wait_element(self, by_element: tuple, timeout: int = 15) -> WebElement:
+    def _wait_element(
+        self, by_element: tuple, timeout: int = 15
+    ) -> WebElement:
         """Wait for the element"""
         wait = WebDriverWait(self.browser, timeout)
         try:
@@ -317,24 +320,41 @@ class CookieManager:
             os.remove(self.file_path)
 
 
-def main():
-    with BrowserManager() as browser_manager:
-        browser = browser_manager.start_browser()
-        auth = StravaAuthorization(
-            browser,
-            config.env(str("EMAIL")),
-            config.env.str("PASSWD"),
-        )
-        leaderboard = StravaLeaderboard(browser)
+class StravaLeaderboardRetriever:
+    """Retrieves Strava leaderboard data for a given club."""
+
+    def __init__(self, email, password, club_id):
+        self.club_id = club_id
+        self.browser = BrowserManager().start_browser()
+        self.auth = StravaAuthorization(self.browser, email, password)
+        self.leaderboard = StravaLeaderboard(self.browser)
+
+    def retrieve_leaderboard_data(self) -> list[dict[str, str]] | None:
+        """Retrieve leaderboard data for the specified Strava club."""
         try:
-            auth.authorization()
-            athletes = leaderboard.get_this_week_or_last_week_leaders(
-                config.env.int("CLUB_ID")
+            self.auth.authorization()
+            leaderboard_data = (
+                self.leaderboard.get_this_week_or_last_week_leaders(
+                    self.club_id
+                )
             )
+            return leaderboard_data
         except Exception as e:
             config.logger.error("An error occurred: %s", str(e))
+        finally:
+            self.browser.quit()
+        return None
 
-    print(athletes)
+
+def main():
+    strava = StravaLeaderboardRetriever(
+        config.env(str("EMAIL")),
+        config.env.str("PASSWD"),
+        config.env.int("CLUB_ID"),
+    )
+    athletes_rank = strava.retrieve_leaderboard_data()
+    print(athletes_rank)  # for debugging
+    return athletes_rank
 
 
 if __name__ == "__main__":
