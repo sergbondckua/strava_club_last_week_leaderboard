@@ -63,7 +63,7 @@ class BrowserManager:
     def start_browser(self):
         """Start the web driver (remote or local)."""
         try:
-            if os.environ.get("DRIVER_FOR_DOCKER", False):
+            if os.environ.get("DRIVER_FROM_DOCKER", False):
                 self.browser = webdriver.Remote(
                     command_executor="http://172.0.0.2:4444",
                     options=self.options,
