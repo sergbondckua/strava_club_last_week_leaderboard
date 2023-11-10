@@ -24,16 +24,15 @@ class StravaAuthorization(StravaPageUtils):
         This method opens the login page, attempts to read cookies, and, in case of failure,
         performs authentication using a username and password.
         """
-
         self._open_page(f"{config.BASE_URL}/login")
         cookies = self.cookie_manager.read_cookie()
 
         if cookies is not None and self._check_apply_cookies(cookies):
-            config.logger.info("Cookie file found and applied.")
+            config.logger.info("Cookies have been successfully applied.")
         else:
             config.logger.warning(
                 "Invalid cookies! Authorization failed. "
-                "Authentication will be attempted using a login and password"
+                "Authentication will be attempted using a login and password."
             )
             self.cookie_manager.remove_cookie()
             self._login(self.email, self.password)

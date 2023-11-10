@@ -28,6 +28,16 @@ BASE_DIR = Path(__file__).resolve().parent
 # Base URL
 BASE_URL = "https://www.strava.com"
 
+# Chrome driver options
+option_arguments = [
+    "--headless=new",
+    "--hide-scrollbars",
+    "start-maximized",
+    "--no-sandbox",
+    "--disable-blink-features=AutomationControlled",
+    "disable-popup-blocking",
+]
+
 # Create a scheduler
 scheduler = BlockingScheduler(timezone=env.str("TZ"))
 
