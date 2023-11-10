@@ -87,7 +87,7 @@ class BrowserManager:
             config.logger.error("Error closing the web browser: %s", str(e))
 
 
-class CommonUtils:
+class StravaPageUtils:
     """
     A base class providing common methods for interacting with the Strava
     web application.
@@ -127,7 +127,7 @@ class CommonUtils:
         config.logger.info("Open page URL: %s", self.browser.current_url)
 
 
-class StravaAuthorization(CommonUtils):
+class StravaAuthorization(StravaPageUtils):
     """Handles Strava user authentication."""
 
     def __init__(self, browser: webdriver, email: str, password: str):
@@ -207,7 +207,7 @@ class StravaAuthorization(CommonUtils):
         field.send_keys(password)
 
 
-class StravaLeaderboard(CommonUtils):
+class StravaLeaderboard(StravaPageUtils):
     """A class for interacting with the Strava leaderboard of a club."""
 
     def __init__(self, browser: webdriver):

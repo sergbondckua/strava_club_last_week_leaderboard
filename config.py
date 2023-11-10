@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent
 
+# Base URL
+BASE_URL = "https://www.strava.com"
+
 # Create a scheduler
 scheduler = BlockingScheduler(timezone=env.str("TZ"))
 
