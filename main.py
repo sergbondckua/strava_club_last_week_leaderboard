@@ -1,7 +1,7 @@
 import asyncio
 
-from parse import StravaLeaderboardRetriever
 from create_poster import PosterAthletes, PosterSaver
+from parse import StravaLeaderboardRetriever
 from sender import TelegramSender
 import config
 
