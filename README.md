@@ -4,7 +4,7 @@
 [![Pillow](https://img.shields.io/badge/Pillow-10.1.0-yellow?labelColor=orange&color=purple)](https://python-pillow.org/)
 [![Aiogram](https://img.shields.io/badge/aiogram-v2.25.2-blue)](https://docs.aiogram.dev/en/latest/)
 
-A Python code for scraping data from Strava club leaderboards using Selenium.
+A Python project for scraping data from Strava club leaderboards using Selenium.
 
 ## Table of Contents
 - [Introduction](#introduction)
