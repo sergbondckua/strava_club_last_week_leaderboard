@@ -1,35 +1,11 @@
 import os
 from datetime import datetime, timedelta
-from pathlib import Path
-from aiogram import Bot, types
+
+from aiogram import types, Bot
 
 import config
 from config import format_and_translate_date
-
-
-class PosterAlbumSender:
-    """
-    This class is responsible for sending a media group of photos to a bot.
-    """
-
-    IMAGE_PATH = os.path.join(Path(__file__).resolve().parent, "out_posters")
-    CLUB_ID = config.env.str("CLUB_ID")
-
-    def __init__(self, bot_token: str):
-        self.logger = config.logger
-        self.bot = Bot(bot_token, parse_mode=types.ParseMode.HTML)
-
-    def get_image_files(self) -> list[str]:
-        """Get a list the files in the IMAGE_PATH directory."""
-
-        allowed_extensions = (".jpg", ".jpeg", ".png", ".gif")
-        image_files = [
-            file
-            for file in os.listdir(self.IMAGE_PATH)
-            if file.lower().endswith(allowed_extensions)
-        ]
-
-        return image_files
+from sender.album_sender import PosterAlbumSender
 
 
 class TelegramSender(PosterAlbumSender):
@@ -39,7 +15,11 @@ class TelegramSender(PosterAlbumSender):
     This class inherits from PosterAlbumSender and provides methods to prepare and send a media group
     of images with captions to a specified Telegram chat.
     """
-    
+
+    def __init__(self, bot_token: str):
+        self.logger = config.logger
+        self.bot = Bot(bot_token, parse_mode=types.ParseMode.HTML)
+
     @property
     def get_caption(self) -> str:
         strava_club_id = self.CLUB_ID
@@ -68,7 +48,6 @@ class TelegramSender(PosterAlbumSender):
         """
         Creates and returns a MediaGroup object based on images located in the specified folder.
         """
-
         image_files = sorted(self.get_image_files())
         media_group = types.MediaGroup()
 
@@ -90,7 +69,6 @@ class TelegramSender(PosterAlbumSender):
 
     async def send_album_to_telegram(self, chat_id):
         """Send an album of images to a Telegram chat."""
-
         self.logger.info("Sending to Telegram channel %s ...", chat_id)
         session = await self.bot.get_session()
         await self.bot.send_chat_action(

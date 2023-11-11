@@ -10,7 +10,7 @@ import config
 class FontManager:
     """A FontManager class for managing fonts."""
 
-    FONT_DIR = config.BASE_DIR / "poster_generator/resources/fonts"
+    FONT_DIR = config.BASE_DIR / "poster_maker/resources/fonts"
     DEFAULT_FONT = os.path.join(FONT_DIR, "Ubuntu-Regular.ttf")
     FONT_SIZE = 30
 

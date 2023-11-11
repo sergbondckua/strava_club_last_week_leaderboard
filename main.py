@@ -1,14 +1,15 @@
 import asyncio
 
-from create_poster import PosterAthletes, PosterSaver
-from parse import StravaLeaderboardRetriever
-from sender import TelegramSender
 import config
+from parse import StravaLeaderboardRetriever
+from poster import PosterAthletesCollector
+from tg_sender import TelegramSender
 
 
 async def main():
     """Main function"""
 
+    # Get Athletes data
     strava = StravaLeaderboardRetriever(
         config.env.str("EMAIL"),
         config.env.str("PASSWD"),
@@ -16,19 +17,9 @@ async def main():
     )
     athletes_rank = strava.retrieve_leaderboard_data()
 
-    async with PosterAthletes() as pa:
-        top_10 = athletes_rank[:10]
-        remainder = athletes_rank[10:]
-        tag = len(remainder) - (len(remainder) % 15)
-        groups = [top_10] + [remainder[i:i+15] for i in range(0, tag, 15)]
-        poster_saver = PosterSaver()
-        await poster_saver.clear_output_folder()
-
-        for num, group in enumerate(groups):
-            head_icons = num == 0
-            filename = f"out{num + 1}.png"
-            poster = await pa.generate_poster(group, head_icons)
-            await poster_saver.save_poster(poster, filename)
+    # Generate and save posters
+    poster = PosterAthletesCollector(athletes_rank)
+    await poster.create_and_save_posters()
 
     # Sending posters via Telegram
     send = TelegramSender(bot_token=config.env.str("BOT_TOKEN"))

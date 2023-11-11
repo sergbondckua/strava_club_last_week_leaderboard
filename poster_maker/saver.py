@@ -19,6 +19,7 @@ class PosterSaver:
         output_file = self.output_dir / filename
         with output_file.open("wb") as f:
             poster.save(f, "PNG")
+        self.logger.info("Saved poster image: %s", filename)
         poster.close()  # Explicitly close the image
 
     async def clear_output_folder(self):
@@ -27,4 +28,4 @@ class PosterSaver:
         for file in folder_path.glob("*"):
             if file.is_file():
                 file.unlink()
-        self.logger.info("The folder has been cleared.")
+        self.logger.info("The folder %s has been cleared.", folder_path)

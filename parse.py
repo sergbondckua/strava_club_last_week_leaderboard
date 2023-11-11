@@ -37,18 +37,3 @@ class StravaLeaderboardRetriever:
         finally:
             self.browser.quit()
         return None
-
-
-def main():
-    strava = StravaLeaderboardRetriever(
-        config.env.str("EMAIL"),
-        config.env.str("PASSWD"),
-        config.env.int("CLUB_ID"),
-    )
-    athletes_rank = strava.retrieve_leaderboard_data(last_week=False)
-    print(athletes_rank)  # for debugging
-    return athletes_rank
-
-
-if __name__ == "__main__":
-    main()

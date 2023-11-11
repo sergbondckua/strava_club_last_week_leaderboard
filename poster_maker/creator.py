@@ -2,27 +2,21 @@ from __future__ import annotations
 
 import re
 import ssl
-from os import path
-from pathlib import Path
-
 from io import BytesIO
-import certifi
-from PIL import Image, ImageDraw, ImageFont
 
 import aiohttp
-from fontTools.ttLib import TTFont
-
+import certifi
+from PIL import Image, ImageDraw
 from pilmoji import Pilmoji
 
 import config
-from poster_generator.font_manager import FontManager
+from poster_maker.font_manager import FontManager
 
 
-class PosterAthletes:
+class AthleteRankPosterGenerator:
     """A class for generating posters with athlete rank information."""
 
-    BASE_DIR = Path(__file__).resolve().parent
-    RESOURCES_DIR = BASE_DIR / "resources"
+    RESOURCES_DIR = config.BASE_DIR / "poster_maker/resources"
     BACKGROUND_IMAGE_PATH = RESOURCES_DIR / "images/background.png"
     BACKGROUND_2_IMAGE_PATH = RESOURCES_DIR / "images/background_2.png"
     CUP_PATH = RESOURCES_DIR / "images/cup.png"
@@ -192,87 +186,3 @@ class PosterAthletes:
 
         self.logger.info("Poster #%s is complete.", self.method_calls)
         return poster
-
-
-class PosterSaver:
-    """Save poster to disk."""
-
-    OUTPUT_FOLDER = "out_posters"
-
-    def __init__(self):
-        self.logger = config.logger
-        self.output_dir = Path(self.OUTPUT_FOLDER)
-
-    async def save_poster(self, poster: Image.Image, filename: str):
-        """
-        Save the generated poster image to a file.
-        """
-
-        output_file = self.output_dir / filename
-        with output_file.open("wb") as f:
-            poster.save(f, "PNG")
-        poster.close()  # Explicitly close the image
-
-    async def clear_output_folder(self):
-        """Clear the folder."""
-        folder_path = self.output_dir.resolve()
-        for file in folder_path.glob("*"):
-            if file.is_file():
-                file.unlink()
-        self.logger.info("The folder has been cleared.")
-
-
-# class FontManager:
-#     """A FontManager class for managing fonts."""
-#
-#     FONT_DIR = Path(__file__).resolve().parent / "resources/fonts"
-#     DEFAULT_FONT = path.join(FONT_DIR, "Ubuntu-Regular.ttf")
-#     FONT_SIZE = 30
-#
-#     async def set_font(self, symbol: str) -> ImageFont.FreeTypeFont:
-#         """Set the font_manager to a given symbol"""
-#
-#         symbol_unicode = ord(symbol)
-#         ttf = TTFont(self.DEFAULT_FONT)
-#
-#         if self.is_symbol_in_font(symbol_unicode, ttf):
-#             return ImageFont.truetype(self.DEFAULT_FONT, size=self.FONT_SIZE)
-#
-#         fonts_list = self.get_font_list()
-#
-#         for font in fonts_list:
-#             ttf = TTFont(path.join(self.FONT_DIR, font))
-#
-#             if self.is_symbol_in_font(symbol_unicode, ttf):
-#                 return ImageFont.truetype(
-#                     path.join(self.FONT_DIR, font),
-#                     size=self.FONT_SIZE,
-#                 )
-#
-#         return ImageFont.truetype(self.DEFAULT_FONT, size=self.FONT_SIZE)
-#
-#     @staticmethod
-#     def is_symbol_in_font(symbol_unicode: ord, font: TTFont) -> bool:
-#         """
-#         Checks if a Unicode symbol exists in the specified font.
-#
-#         :param symbol_unicode: The Unicode symbol as ord().
-#         :param font: The TTFont object representing the font.
-#         :return: True if the symbol exists in the font, otherwise False.
-#         """
-#         return any(
-#             char_map.isUnicode() and symbol_unicode in char_map.cmap
-#             for char_map in font["cmap"].tables
-#         )
-#
-#     def get_font_list(self) -> list[Path]:
-#         """Get a list of font files in the specified directory."""
-#
-#         font_dir = Path(self.FONT_DIR).resolve()
-#         fonts_list = [file for file in font_dir.glob("*") if file.is_file()]
-#         return fonts_list
-#
-#     @property
-#     def font(self) -> ImageFont.FreeTypeFont:
-#         """Get the font_manager for text in the poster."""
-#         return ImageFont.truetype(self.DEFAULT_FONT, size=self.FONT_SIZE)
