@@ -9,7 +9,6 @@ class PosterAlbumSender:
     """
 
     IMAGE_PATH = config.BASE_DIR / "out_posters"
-    CLUB_ID = config.env.str("CLUB_ID")
 
     def get_image_files(self) -> list[str]:
         """Get a list the files in the IMAGE_PATH directory."""

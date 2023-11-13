@@ -16,6 +16,8 @@ class TelegramSender(PosterAlbumSender):
     of images with captions to a specified Telegram chat.
     """
 
+    CLUB_ID = config.env.str("CLUB_ID")
+
     def __init__(self, bot_token: str):
         self.logger = config.logger
         self.bot = Bot(bot_token, parse_mode=types.ParseMode.HTML)
