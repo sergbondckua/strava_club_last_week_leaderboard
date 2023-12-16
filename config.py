@@ -48,7 +48,7 @@ locale = Locale(env.str("LOCALE"))
 
 # Initialize the gettext object to use the current locale
 translate = gettext.translation(
-    "bot", localedir="locales", languages=[locale.language]
+    "bot", localedir=BASE_DIR / "locales", languages=[locale.language]
 )
 
 
