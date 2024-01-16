@@ -22,15 +22,15 @@ class AthleteRankPosterGenerator:
     CUP_PATH = RESOURCES_DIR / "images/cup.png"
     LOGO_PATH = RESOURCES_DIR / "images/logo.png"
     STRAVA_PATH = RESOURCES_DIR / "images/strava.png"
-    HEAD_ICONS_POSITION_Y = 362
+    HEAD_ICONS_POSITION_Y = 410
     AVATAR_SMALL_SIZE = 60
     AVATAR_LARGE_SIZE = 124
-    AVATAR_SMALL_POSITION_X = 70
+    AVATAR_SMALL_POSITION_X = 20
     AVATARS_TOP3_POSITIONS = ((258, 28), (130, 55), (385, 60))
     DISTANCE_POSITION_X = 450
-    NAME_POSITION_X = 140
-    ROW_POSITION_Y = 20
-    RANK_POSITION_X = 20
+    NAME_POSITION_X = 85
+    ROW_POSITION_Y = 17
+    RANK_POSITION_X = 15
 
     def __init__(self):
         self.logger = config.logger
@@ -119,12 +119,12 @@ class AthleteRankPosterGenerator:
             "Generation of poster #%s has begun...", self.method_calls
         )
         if not head_icons:
-            shift = 20
+            shift = 50
             poster = Image.open(self.BACKGROUND_2_IMAGE_PATH)
         else:
             shift = self.HEAD_ICONS_POSITION_Y
             poster = Image.open(self.BACKGROUND_IMAGE_PATH)
-            self._add_logos_and_icons(poster)
+            # self._add_logos_and_icons(poster)
 
         emoji_text = Pilmoji(poster)
 
@@ -159,16 +159,16 @@ class AthleteRankPosterGenerator:
             )
 
             # Drawing text on an image
-            emoji_text.text(
-                (self.RANK_POSITION_X, self.ROW_POSITION_Y + shift),
-                text=f"{rank}.",
-                fill="#1b0f13",
-                font=self.font_utils.font,
-            )
+            # emoji_text.text(
+            #     (self.RANK_POSITION_X, self.ROW_POSITION_Y + shift),
+            #     text=f"{rank}.",
+            #     fill="#1b0f13",
+            #     font=self.font_utils.font,
+            # )
 
             emoji_text.text(
                 (self.NAME_POSITION_X, self.ROW_POSITION_Y + shift),
-                text=name,
+                text=f"{rank}. {name}",
                 fill="#1b0f13",
                 font=await self.font_utils.set_font(
                     re.search(r"\w", name).group(0)
@@ -182,7 +182,7 @@ class AthleteRankPosterGenerator:
                 font=self.font_utils.font,
             )
 
-            shift += 62
+            shift += 59
 
         self.logger.info("Poster #%s is complete.", self.method_calls)
         return poster
