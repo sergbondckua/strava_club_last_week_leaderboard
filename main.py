@@ -10,13 +10,16 @@ from tg_sender import TelegramSender
 async def get_season_config(poster_generator, month=None):
     """Set season-specific configurations for the poster generator."""
 
+    background_dir = (
+        config.BASE_DIR / "poster_maker/resources/images/poster_bgrnd"
+    )
     background_images = {
-        "winter": "poster_maker/resources/images/poster_bgrnd/winter.jpg",
-        "spring": "poster_maker/resources/images/poster_bgrnd/spring.jpg",
-        "summer": "poster_maker/resources/images/poster_bgrnd/summer.jpg",
-        "autumn": "poster_maker/resources/images/poster_bgrnd/autumn.jpg",
-        "other": "poster_maker/resources/images/poster_bgrnd/other.jpg",
-        "other_winter": "poster_maker/resources/images/poster_bgrnd/other_winter.jpg",
+        "winter": background_dir / "winter.jpg",
+        "spring": background_dir / "spring.jpg",
+        "summer": background_dir / "summer.jpg",
+        "autumn": background_dir / "autumn.jpg",
+        "other": background_dir / "other.jpg",
+        "other_winter": background_dir / "other_winter.jpg",
     }
 
     # Checking that the month is within the acceptable range (1 to 12)
@@ -46,6 +49,7 @@ async def get_season_config(poster_generator, month=None):
                 settings[1]
             ]
             poster_generator.AVATARS_TOP3_POSITIONS = settings[2]
+            break
 
 
 async def main():
