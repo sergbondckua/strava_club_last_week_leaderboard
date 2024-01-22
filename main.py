@@ -29,7 +29,7 @@ async def get_season_config(poster_generator, month=None):
         (1, 2, 12): (
             "winter",
             "other_winter",
-            ((258, 22), (34, 35), (486, 34)),
+            ((263, 43), (130, 123), (400, 123)),
         ),
         (3, 4, 5): ("spring", "other", ((253, 105), (80, 112), (425, 112))),
         (6, 7, 8): ("summer", "other", ((265, 40), (130, 123), (400, 123))),
