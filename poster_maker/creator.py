@@ -73,6 +73,7 @@ class AthleteRankPosterGenerator:
         size=None,
     ) -> Image.Image:
         source_img = await self._load_user_avatar(avatar_url)
+        empty_avatar = Image.new("RGBA", (60, 60), (255, 255, 255, 0))
 
         if source_img is not None:
             avatar = source_img.resize((size, size)) if size else source_img
@@ -85,15 +86,18 @@ class AthleteRankPosterGenerator:
             avatar.putalpha(mask)
 
             draw = ImageDraw.Draw(avatar)
-            draw.ellipse(
-                (0, 0, size, size), outline=border_color, width=border_width
-            )
+            try:
+                draw.ellipse(
+                    (0, 0, size, size),
+                    outline=border_color,
+                    width=border_width,
+                )
+            except TypeError:
+                return empty_avatar  # Return a transparent image on error
 
             return avatar
         self.logger.error("Image not found: url=%s incorrect", avatar_url)
-        return Image.new(
-            "RGBA", (60, 60), (255, 255, 255, 0)
-        )  # Return a transparent image on error
+        return empty_avatar  # Return a transparent image on error
 
     def _add_logos_and_icons(self, image: Image.Image) -> None:
         logo = Image.open(self.LOGO_PATH)
