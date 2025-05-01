@@ -1,7 +1,9 @@
 import os
 from datetime import datetime, timedelta
+from typing import List, Union
 
-from aiogram import types, Bot
+from aiogram import Bot, types
+from aiogram.types import FSInputFile, InputMediaPhoto
 
 import config
 from config import format_and_translate_date
@@ -10,73 +12,90 @@ from sender.album_sender import PosterAlbumSender
 
 class TelegramSender(PosterAlbumSender):
     """
-    A class for sending an album of images to a Telegram chat.
-
-    This class inherits from PosterAlbumSender and provides methods to prepare and send a media group
-    of images with captions to a specified Telegram chat.
+    Клас для відправки альбому зображень у Telegram чат.
+    Нащадок PosterAlbumSender, що надає методи для підготовки та відправки
+    медіа-групи зображень із підписами до вказаного чату.
     """
 
     CLUB_ID = config.env.str("CLUB_ID")
 
     def __init__(self, bot_token: str):
+        """Ініціалізація з бот-токеном"""
         self.logger = config.logger
-        self.bot = Bot(bot_token, parse_mode=types.ParseMode.HTML)
+        self.bot = Bot(token=bot_token, parse_mode=types.ParseMode.HTML)
 
     @property
     def get_caption(self) -> str:
+        """Генерує підпис для альбому"""
         strava_club_id = self.CLUB_ID
 
+        # Формування посилання на Strava клуб
         strava_url = (
             f"<a href='https://www.strava.com/clubs/{strava_club_id}'>StravaClub</a>"
             if strava_club_id
             else "<a href='https://www.strava.com/'>Strava</a>"
         )
 
-        text = "Summary of {week}-th running week ({month}, {year})"
+        # Текст з перекладом
+        text = "Підсумок {week}-го тижня бігу ({month}, {year})"
         last_week_date = datetime.now() - timedelta(weeks=1)
         description = config.translate.gettext(text).format(
             **format_and_translate_date(last_week_date)
         )
         tag_month = last_week_date.strftime("%B").lower()
 
+        # Фінальний підпис
         caption = (
             f"📊 <b>{description}</b>\n\n"
-            f"#{tag_month} | #leaders_last_week | {strava_url}"
+            f"#{tag_month} | #лідери_тижня | {strava_url}"
         )
 
         return caption
 
-    async def get_media_group(self) -> types.MediaGroup:
+    async def get_media_group(self) -> List[InputMediaPhoto]:
         """
-        Creates and returns a MediaGroup object based on images located in the specified folder.
+        Створює та повертає список InputMediaPhoto для медіа-групи.
         """
         image_files = sorted(self.get_image_files())
-        media_group = types.MediaGroup()
+        media_group = []
 
-        for num, image_file in enumerate(image_files):
-            image_input = types.InputFile(
-                os.path.join(self.IMAGE_PATH, image_file)
-            )
-            caption = self.get_caption if not num else None
+        for i, image_file in enumerate(image_files):
+            # Тільки перше зображення матиме підпис
+            caption = self.get_caption if i == 0 else None
 
-            media_group.attach_photo(
-                types.InputMediaPhoto(
-                    media=image_input,
+            media_group.append(
+                InputMediaPhoto(
+                    media=FSInputFile(os.path.join(self.IMAGE_PATH, image_file)),
                     caption=caption,
-                    parse_mode=types.ParseMode.HTML,
+                    parse_mode=types.ParseMode.HTML
                 )
             )
 
         return media_group
 
-    async def send_album_to_telegram(self, chat_id):
-        """Send an album of images to a Telegram chat."""
-        self.logger.info("Sending to Telegram channel %s ...", chat_id)
-        session = await self.bot.get_session()
-        await self.bot.send_chat_action(
-            chat_id=chat_id, action=types.ChatActions.UPLOAD_PHOTO
-        )
-        media = await self.get_media_group()
-        await self.bot.send_media_group(chat_id=chat_id, media=media)
-        await session.close()
-        self.logger.info("Album have been sent successfully.")
+    async def send_album_to_telegram(self, chat_id: Union[int, str]) -> None:
+        """Надсилає альбом зображень у Telegram чат."""
+        self.logger.info("Початок відправки альбому до чату %s...", chat_id)
+
+        try:
+            # Показати статус завантаження
+            await self.bot.send_chat_action(
+                chat_id=chat_id,
+                action=types.ChatAction.UPLOAD_PHOTO
+            )
+
+            # Надіслати альбом
+            media = await self.get_media_group()
+            if not media:
+                self.logger.warning("Не знайдено зображень для відправки")
+                return
+
+            await self.bot.send_media_group(
+                chat_id=chat_id,
+                media=media
+            )
+            self.logger.info("Альбом успішно надіслано до чату %s", chat_id)
+
+        except Exception as e:
+            self.logger.error("Помилка при відправці альбому: %s", str(e))
+            raise
