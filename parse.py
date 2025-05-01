@@ -36,4 +36,4 @@ class StravaLeaderboardRetriever:
             config.logger.error("An error occurred: %s", str(e))
         finally:
             self.browser.quit()
-        return None
+            return None

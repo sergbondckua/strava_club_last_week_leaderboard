@@ -39,7 +39,7 @@ class StravaPageUtils:
             element = wait.until(ec.visibility_of_element_located(by_element))
             return element
         except TimeoutException as e:
-            raise TimeoutException("Not found element") from e
+            raise TimeoutException(f"Not found element {by_element}") from e
 
     def _open_page(self, url: str):
         """Open the specified page URL in the browser."""

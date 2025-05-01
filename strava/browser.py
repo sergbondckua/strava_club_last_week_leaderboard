@@ -1,5 +1,6 @@
 import os
 
+from selenium_stealth import stealth
 from selenium import webdriver
 from selenium.common import WebDriverException
 
@@ -45,6 +46,14 @@ class BrowserManager:
                 )
             else:
                 self.browser = webdriver.Chrome(options=self.options)
+                stealth(self.browser,
+                        languages=["en-US", "en"],
+                        vendor="Google Inc.",
+                        platform="Win32",
+                        webgl_vendor="Intel Inc.",
+                        renderer="Intel Iris OpenGL Engine",
+                        fix_hairline=True,
+                        )
         except WebDriverException as error:
             config.logger.error(
                 "Error starting the web browser: %s", str(error)
