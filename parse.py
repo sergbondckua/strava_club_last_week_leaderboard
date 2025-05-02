@@ -16,7 +16,7 @@ class StravaLeaderboardRetriever:
         self.leaderboard = StravaLeaderboard(self.browser)
 
     def retrieve_leaderboard_data(
-        self, last_week: bool = True
+        self, is_last_week: bool = True
     ) -> list[dict[str, str]] | None:
         """Retrieve leaderboard data for the specified Strava club."""
         try:
@@ -24,9 +24,10 @@ class StravaLeaderboardRetriever:
             leaderboard_data = (
                 self.leaderboard.get_this_week_or_last_week_leaders(
                     self.club_id,
-                    last_week,
+                    is_last_week,
                 )
             )
+            print(leaderboard_data)
             return leaderboard_data
         except AuthorizationFailureException as auth_error:
             config.logger.error(

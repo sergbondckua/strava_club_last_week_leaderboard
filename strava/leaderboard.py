@@ -8,7 +8,7 @@ from strava.page_utils import StravaPageUtils
 class StravaLeaderboard(StravaPageUtils):
     """A class for interacting with the Strava leaderboard of a club."""
 
-    def __init__(self, browser: webdriver):
+    def __init__(self, browser: webdriver.Chrome):
         super().__init__(browser)
         self.browser = browser
 
@@ -16,6 +16,7 @@ class StravaLeaderboard(StravaPageUtils):
         self, club_id: int, last_week=True
     ) -> list:
         """Get the leaders of a club for this or last week."""
+
         self._open_page(f"{config.BASE_URL}/clubs/{str(club_id)}/leaderboard")
 
         if last_week:

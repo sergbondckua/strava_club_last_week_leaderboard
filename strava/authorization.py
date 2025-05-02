@@ -60,7 +60,7 @@ class StravaAuthorization(StravaPageUtils):
             self._wait_element((By.ID, "desktop-email")).click()
             self._input_email(username)
             self._click_submit_login()
-        time.sleep(30)
+        time.sleep(5)
         self.browser.save_screenshot("login.png")
         self._click_use_password()
         self._input_password(password)

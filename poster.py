@@ -12,6 +12,7 @@ class PosterAthletesCollector:
 
     def _group_athletes_for_posters(self):
         """Group athletes for generating posters."""
+
         top_10 = self.athletes_data[:10]
         remainder = self.athletes_data[10:]
         tag = len(remainder) - (len(remainder) % 15)

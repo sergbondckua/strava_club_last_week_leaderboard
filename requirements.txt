@@ -6,8 +6,6 @@ certifi
 environs
 fonttools
 Pillow
-emoji>=2.2.0
-pilmoji>=2.0.4
 requests
 selenium
 setuptools
