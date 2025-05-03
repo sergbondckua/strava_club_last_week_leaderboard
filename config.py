@@ -4,6 +4,9 @@ import gettext
 from datetime import datetime
 from pathlib import Path
 
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from babel import Locale
@@ -21,6 +24,12 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+
+# Telegram Bot
+bot = Bot(
+    token=env.str("BOT_TOKEN"),
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+)
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent

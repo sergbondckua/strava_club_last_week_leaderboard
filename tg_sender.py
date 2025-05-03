@@ -8,7 +8,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import FSInputFile, InputMediaPhoto
 
 import config
-from config import format_and_translate_date
+from config import format_and_translate_date, bot
 from sender.album_sender import PosterAlbumSender
 
 
@@ -21,11 +21,8 @@ class TelegramSender(PosterAlbumSender):
 
     CLUB_ID = config.env.str("CLUB_ID")
 
-    def __init__(self, bot_token: str):
-        self.bot = Bot(
-            token=bot_token,
-            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-        )
+    def __init__(self):
+        self.bot: Bot = bot
         self.logger = config.logger
 
     @property

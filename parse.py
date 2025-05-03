@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+from aiogram.utils.markdown import hcode
+
 import config
 from strava.authorization import StravaAuthorization
 from strava.browser import BrowserManager
@@ -32,9 +35,13 @@ class StravaLeaderboardRetriever:
             config.logger.error(
                 "Strava authorization error: %s", str(auth_error)
             )
+            config.bot.send_message(
+                config.env.int("ADMIN_CHAT_ID"), hcode(auth_error)
+            )
             return None
         except Exception as e:
             config.logger.error("An error occurred: %s", str(e))
+            config.bot.send_message(config.env.int("ADMIN_CHAT_ID"), hcode(e))
             return None
         finally:
             self.browser.quit()

@@ -74,7 +74,7 @@ async def main():
     await poster.create_and_save_posters()
 
     # Sending posters via Telegram
-    send = TelegramSender(bot_token=config.env.str("BOT_TOKEN"))
+    send = TelegramSender()
     await send.send_album_to_telegram(config.env.int("CHAT_ID"))
 
 
