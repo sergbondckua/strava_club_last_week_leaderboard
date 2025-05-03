@@ -1,11 +1,11 @@
 aiogram~=3.20.0.post0
 APScheduler~=3.11.0
 babel~=2.17.0
-certifi
+certifi~=2025.4.26
 environs~=14.1.1
 fonttools~=4.57.0
 Pillow~=11.2.1
-requests
-selenium~=4.31.0
+requests~=2.32.3
+selenium~=4.32.0
 selenium_stealth~=1.0.6
-setuptools
+setuptools~=80.3.0

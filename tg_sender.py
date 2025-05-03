@@ -14,15 +14,14 @@ from sender.album_sender import PosterAlbumSender
 
 class TelegramSender(PosterAlbumSender):
     """
-    Клас для відправки альбому зображень у Telegram чат.
-    Нащадок PosterAlbumSender, що надає методи для підготовки та відправки
-    медіа-групи зображень із підписами до вказаного чату.
+    Class to send images to Telegram Chat.
+    Posteralbumsender descendant that provides methods for preparation and sending
+    media groups of images with signatures to the said chat.
     """
 
     CLUB_ID = config.env.str("CLUB_ID")
 
     def __init__(self, bot_token: str):
-        """Ініціалізація з бот-токеном"""
         self.bot = Bot(
             token=bot_token,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
@@ -31,17 +30,17 @@ class TelegramSender(PosterAlbumSender):
 
     @property
     def get_caption(self) -> str:
-        """Генерує підпис для альбому"""
+        """ Get caption for the first image in the album. """
         strava_club_id = self.CLUB_ID
 
-        # Формування посилання на Strava клуб
+        # Forming a link to Strava Club
         strava_url = (
             f"<a href='https://www.strava.com/clubs/{strava_club_id}'>StravaClub</a>"
             if strava_club_id
             else "<a href='https://www.strava.com/'>Strava</a>"
         )
 
-        # Текст з перекладом
+        # Translation text
         text = "Підсумок {week}-го тижня бігу ({month}, {year})"
         last_week_date = datetime.now() - timedelta(weeks=1)
         description = config.translate.gettext(text).format(
@@ -49,7 +48,7 @@ class TelegramSender(PosterAlbumSender):
         )
         tag_month = last_week_date.strftime("%B").lower()
 
-        # Фінальний підпис
+        # Final caption
         caption = (
             f"📊 <b>{description}</b>\n\n"
             f"#{tag_month} | #лідери_тижня | {strava_url}"
@@ -59,13 +58,13 @@ class TelegramSender(PosterAlbumSender):
 
     async def get_media_group(self) -> List[InputMediaPhoto]:
         """
-        Створює та повертає список InputMediaPhoto для медіа-групи.
+        Get a list of InputMediaPhoto objects from the IMAGE_PATH directory.
         """
         image_files = sorted(self.get_image_files())
         media_group = []
 
         for i, image_file in enumerate(image_files):
-            # Тільки перше зображення матиме підпис
+            # Get the caption for the first image
             caption = self.get_caption if i == 0 else None
 
             media_group.append(
@@ -81,28 +80,29 @@ class TelegramSender(PosterAlbumSender):
         return media_group
 
     async def send_album_to_telegram(self, chat_id: Union[int, str]) -> None:
-        """Надсилає альбом зображень у Telegram чат."""
+        """Send an album of images to a Telegram chat."""
         self.logger.info("Початок відправки альбому до чату %s...", chat_id)
 
         try:
             async with self.bot as bot:
 
-                # Показати статус завантаження
+                # Send a chat action
                 await bot.send_chat_action(
                     chat_id=chat_id, action="upload_photo"
                 )
 
-                # Надіслати альбом
+                # Get a list of InputMediaPhoto objects
                 media = await self.get_media_group()
                 if not media:
-                    self.logger.warning("Не знайдено зображень для відправки")
+                    self.logger.warning("No media to send.")
                     return
 
+                # Send the album
                 await bot.send_media_group(chat_id=chat_id, media=media)
                 self.logger.info(
-                    "Альбом успішно надіслано до чату %s", chat_id
+                    "Successfully sent album to chat %s", chat_id
                 )
 
         except Exception as e:
-            self.logger.error("Помилка при відправці альбому: %s", str(e))
+            self.logger.error("Error sending album: %s", str(e))
             raise
