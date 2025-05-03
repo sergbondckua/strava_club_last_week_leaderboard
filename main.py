@@ -1,6 +1,8 @@
 import asyncio
 from datetime import datetime, timedelta
 
+from aiogram.utils.markdown import text, hcode
+
 import config
 from parse import StravaLeaderboardRetriever
 from poster import PosterAthletesCollector
@@ -62,8 +64,13 @@ async def main():
     athletes_rank = strava.retrieve_leaderboard_data()
 
     # Check if data was retrieved
-    if athletes_rank is None:
-        config.logger.error("Failed to retrieve leaderboard data")
+    if isinstance(athletes_rank, tuple):
+        config.logger.error(athletes_rank[1])
+        async with config.bot as bot:
+            await bot.send_message(
+                config.env.int("ADMIN_CHAT_ID"),
+                text("Strava error: ", hcode(athletes_rank[1]), sep="\n"),
+            )
         return
 
     # Generate and save posters

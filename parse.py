@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from aiogram.utils.markdown import hcode
-
 import config
 from strava.authorization import StravaAuthorization
 from strava.browser import BrowserManager
@@ -20,7 +18,7 @@ class StravaLeaderboardRetriever:
 
     def retrieve_leaderboard_data(
         self, is_last_week: bool = True
-    ) -> list[dict[str, str]] | None:
+    ) -> list[dict[str, str]] | None | tuple[None, str]:
         """Retrieve leaderboard data for the specified Strava club."""
         try:
             self.auth.authorization()
@@ -35,13 +33,9 @@ class StravaLeaderboardRetriever:
             config.logger.error(
                 "Strava authorization error: %s", str(auth_error)
             )
-            config.bot.send_message(
-                config.env.int("ADMIN_CHAT_ID"), hcode(auth_error)
-            )
-            return None
+            return None, str(auth_error)
         except Exception as e:
             config.logger.error("An error occurred: %s", str(e))
-            config.bot.send_message(config.env.int("ADMIN_CHAT_ID"), hcode(e))
-            return None
+            return None, str(e)
         finally:
             self.browser.quit()
