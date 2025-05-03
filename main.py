@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
 
-from aiogram.utils.markdown import text, hcode
+from aiogram.utils.markdown import text, hcode, hpre
 
 import config
 from parse import StravaLeaderboardRetriever
@@ -66,10 +66,12 @@ async def main():
     # Check if data was retrieved
     if isinstance(athletes_rank, tuple):
         config.logger.error(athletes_rank[1])
+        # Send error to admin via Telegram
+        msg = f"<pre><code class='language-python'>{athletes_rank[1]}</code></pre>"
         async with config.bot as bot:
             await bot.send_message(
                 config.env.int("ADMIN_CHAT_ID"),
-                text("Strava error: ", hcode(athletes_rank[1]), sep="\n"),
+                text("Strava parsing error: ", msg, sep="\n"),
             )
         return
 
