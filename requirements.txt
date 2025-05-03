@@ -2,6 +2,7 @@ aiogram~=3.20.0.post0
 APScheduler~=3.11.0
 babel~=2.17.0
 certifi~=2025.4.26
+emoji==2.2.0
 environs~=14.1.1
 fonttools~=4.57.0
 Pillow~=11.2.1
