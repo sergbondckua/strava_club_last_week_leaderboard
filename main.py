@@ -61,8 +61,14 @@ async def main():
     )
     athletes_rank = strava.retrieve_leaderboard_data()
 
+    # Check if data was retrieved
+    if athletes_rank is None:
+        config.logger.error("Failed to retrieve leaderboard data")
+        return
+
     # Generate and save posters
     poster = PosterAthletesCollector(athletes_rank)
+
     # Apply settings according to the seasons
     await get_season_config(poster.poster_generator)
     await poster.create_and_save_posters()

@@ -27,14 +27,14 @@ class StravaLeaderboardRetriever:
                     is_last_week,
                 )
             )
-            print(leaderboard_data)
             return leaderboard_data
         except AuthorizationFailureException as auth_error:
             config.logger.error(
                 "Strava authorization error: %s", str(auth_error)
             )
+            return None
         except Exception as e:
             config.logger.error("An error occurred: %s", str(e))
+            return None
         finally:
             self.browser.quit()
-            return None
