@@ -39,7 +39,7 @@ BASE_URL = "https://www.strava.com"
 
 # Chrome driver options
 option_arguments = [
-    # "--headless=new",
+    "--headless=new",
     "--hide-scrollbars",
     "start-maximized",
     "--no-sandbox",
