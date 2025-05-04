@@ -71,7 +71,7 @@ async def main():
         async with config.bot as bot:
             await bot.send_message(
                 config.env.int("ADMIN_CHAT_ID"),
-                text("Strava parsing error: ", msg, sep="\n"),
+                text("🖥 Strava parsing error: ", msg, sep="\n"),
             )
         return
 

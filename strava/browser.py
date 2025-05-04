@@ -29,6 +29,7 @@ class BrowserManager:
         options.add_experimental_option(
             "excludeSwitches", ["enable-automation"]
         )
+        options.add_experimental_option("useAutomationExtension", False)
         return options
 
     def _add_options_arguments(self, options: webdriver.ChromeOptions):

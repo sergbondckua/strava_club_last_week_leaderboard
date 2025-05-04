@@ -15,31 +15,52 @@ class StravaPageUtils:
 
     def __init__(self, browser: webdriver):
         self.browser = browser
+        self.wait = WebDriverWait(self.browser, 15)
 
     def _check_element(
-        self, by_element: tuple, timeout: int = 0, until_not: bool = False
+        self, by_element: tuple[str, str], until_not: bool = False
     ) -> bool:
         """Check if an element is present on the page."""
-        wait = WebDriverWait(self.browser, timeout)
         try:
             if until_not:
-                wait.until_not(ec.visibility_of_element_located(by_element))
+                self.wait.until_not(
+                    ec.visibility_of_element_located(by_element)
+                )
             else:
-                wait.until(ec.visibility_of_element_located(by_element))
+                self.wait.until(ec.visibility_of_element_located(by_element))
         except (TimeoutException, NoSuchElementException):
             return False
         return True
 
-    def _wait_element(
-        self, by_element: tuple, timeout: int = 15
-    ) -> WebElement:
-        """Wait for the element"""
-        wait = WebDriverWait(self.browser, timeout)
+    def _check_hidden_element(
+        self, by_element: tuple[str, str]
+    ) -> WebElement | bool:
+        """Check if an element is present on the page."""
         try:
-            element = wait.until(ec.visibility_of_element_located(by_element))
+            element = self.wait.until(
+                ec.presence_of_element_located(by_element)
+            )
+        except (TimeoutException, NoSuchElementException):
+            return False
+        return element
+
+    def _wait_element(self, by_element: tuple[str, str]) -> WebElement:
+        """Wait for the element"""
+        try:
+            element = self.wait.until(
+                ec.visibility_of_element_located(by_element)
+            )
             return element
         except TimeoutException as e:
             raise TimeoutException(f"Not found element {by_element}") from e
+
+    def _check_url_contains(self, by_element: str) -> bool:
+        """Check if the URL contains the specified element."""
+        try:
+            self.wait.until(ec.url_contains(by_element))
+        except (TimeoutException, NoSuchElementException):
+            return False
+        return True
 
     def _open_page(self, url: str):
         """Open the specified page URL in the browser."""

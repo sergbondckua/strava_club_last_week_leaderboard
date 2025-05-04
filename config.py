@@ -39,12 +39,25 @@ BASE_URL = "https://www.strava.com"
 
 # Chrome driver options
 option_arguments = [
-    "--headless=new",
+    # "--headless=new",
     "--hide-scrollbars",
     "start-maximized",
     "--no-sandbox",
     "--disable-blink-features=AutomationControlled",
     "disable-popup-blocking",
+    # Додаткові опції для приховування автоматизації
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--window-size=1920,1080",
+    "--ignore-certificate-errors",
+    "--disable-extensions",
+    "--disable-infobars",
+    "--incognito",
+    "--disable-notifications",
+    "--disable-web-security",
+    "--allow-running-insecure-content",
+    # Використання реалістичного User-Agent
+    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
 ]
 
 # Create a scheduler
