@@ -1,8 +1,8 @@
 # Strava club - Week's Leaderboard
 [![Python 3.11](https://img.shields.io/badge/python-3.10_|_3.11-blue?labelColor=blue&color=yellow)](https://www.python.org/)
-[![Selenium 4.14.0](https://img.shields.io/badge/selenium-4.14.0-green?labelColor=green&color=white)](https://www.selenium.dev/)
-[![Pillow](https://img.shields.io/badge/Pillow-10.1.0-yellow?labelColor=orange&color=purple)](https://python-pillow.org/)
-[![Aiogram](https://img.shields.io/badge/aiogram-v2.25.2-blue)](https://docs.aiogram.dev/en/latest/)
+[![Selenium 4.14.0](https://img.shields.io/badge/selenium-4.32.0-green?labelColor=green&color=white)](https://www.selenium.dev/)
+[![Pillow](https://img.shields.io/badge/Pillow-11.2.1-yellow?labelColor=orange&color=purple)](https://python-pillow.org/)
+[![Aiogram](https://img.shields.io/badge/aiogram-v3.20.0-blue)](https://docs.aiogram.dev/en/latest/)
 
 A Python project for scraping data from Strava club leaderboards using Selenium.
 
