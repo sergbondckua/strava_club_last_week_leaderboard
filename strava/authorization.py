@@ -1,14 +1,11 @@
 import time
 import random
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 
 from selenium import webdriver
-from selenium.common import TimeoutException
-from selenium.webdriver import Keys, ActionChains
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
 
 import config
 from strava.cookie_manager import CookieManager
@@ -265,16 +262,31 @@ class StravaAuthorization(StravaPageUtils):
         """
         return self._check_element(self.LOCATORS["alert_message"])
 
-    def _add_cookies(self, cookies: List[Dict[str, str]]) -> None:
+    def _add_cookies(self, cookies: List[Dict[str, Any]]):
         """
-        Add cookies to the browser session.
+        Add cookies to the browser.
 
         Args:
-            cookies: List of cookie dictionaries to apply
+            cookies: List of cookie dictionaries to add
         """
         for cookie in cookies:
             try:
-                self.browser.add_cookie(cookie)
+                cookie_dict = {
+                    "name": cookie["name"],
+                    "value": cookie["value"],
+                    "domain": cookie["domain"],
+                    "path": cookie.get("path", "/"),
+                    "secure": cookie.get("secure", False),
+                    "httpOnly": cookie.get("httpOnly", False),
+                }
+
+                if "expiry" in cookie or "expirationDate" in cookie:
+                    cookie_dict["expiry"] = int(
+                        cookie.get("expiry") or cookie.get("expirationDate")
+                    )
+
+                self.browser.add_cookie(cookie_dict)
+
             except Exception as e:
                 self.logger.warning(f"Failed to add cookie: {str(e)}")
 
