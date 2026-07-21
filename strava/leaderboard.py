@@ -1,3 +1,6 @@
+import json
+import html
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
@@ -39,12 +42,12 @@ class StravaLeaderboard(StravaPageUtils):
             )
 
             imgs = trow.find_elements(By.TAG_NAME, "img")
-            if imgs:
-                avatar_medium = imgs[0].get_attribute("src").strip()
-                avatar_large = avatar_medium.replace("medium", "large")
-            else:
-                avatar_medium = None
-                avatar_large = None
+            avatar_div = trow.find_element(By.CSS_SELECTOR, "div.avatar")
+            props = json.loads(html.unescape(
+                avatar_div.get_attribute("data-react-props")
+            ))
+            avatar_medium = props.get("src")
+            avatar_large = avatar_medium.replace("medium", "large")
 
             # Extract text values from 'td' elements and assign them to variables
             (
