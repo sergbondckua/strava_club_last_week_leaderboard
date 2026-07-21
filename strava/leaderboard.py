@@ -37,12 +37,14 @@ class StravaLeaderboard(StravaPageUtils):
                 .get_attribute("href")
                 .strip()
             )
-            avatar_medium = (
-                trow.find_element(By.TAG_NAME, "img")
-                .get_attribute("src")
-                .strip()
-            )
-            avatar_large = avatar_medium.replace("medium", "large")
+
+            imgs = trow.find_elements(By.TAG_NAME, "img")
+            if imgs:
+                avatar_medium = imgs[0].get_attribute("src").strip()
+                avatar_large = avatar_medium.replace("medium", "large")
+            else:
+                avatar_medium = None
+                avatar_large = None
 
             # Extract text values from 'td' elements and assign them to variables
             (
