@@ -56,6 +56,9 @@ class AthleteRankPosterGenerator:
         return self.session
 
     async def _load_user_avatar(self, avatar_url: str) -> Image.Image | None:
+        if not avatar_url:
+            return Image.new("RGBA", (256, 256), (180, 180, 180, 255))
+
         try:
             async with self._get_session().get(avatar_url) as response:
                 response.raise_for_status()  # Checking for successful response status
