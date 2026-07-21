@@ -41,7 +41,6 @@ class StravaLeaderboard(StravaPageUtils):
                 .strip()
             )
 
-            imgs = trow.find_elements(By.TAG_NAME, "img")
             avatar_div = trow.find_element(By.CSS_SELECTOR, "div.avatar")
             props = json.loads(html.unescape(
                 avatar_div.get_attribute("data-react-props")
